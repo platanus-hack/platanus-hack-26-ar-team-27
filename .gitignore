@@ -53,3 +53,17 @@ coverage/
 .turbo/
 .eslintcache
 .vercel
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Local SQLite DB (legacy; we now use Supabase)
+gtm_mvp.db
+gtm_mvp.db-journal

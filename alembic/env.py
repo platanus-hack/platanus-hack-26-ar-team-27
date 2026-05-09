@@ -19,8 +19,15 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+from app.db.session import _normalize_postgres_url  # noqa: E402
+
 settings = get_settings()
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# Alembic's ConfigParser interprets `%` as interpolation; escape it so
+# URL-encoded passwords (e.g. `%21`, `%2B`) survive intact.
+config.set_main_option(
+    "sqlalchemy.url",
+    _normalize_postgres_url(settings.database_url).replace("%", "%%"),
+)
 
 target_metadata = Base.metadata
 
