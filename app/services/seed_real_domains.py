@@ -1,7 +1,12 @@
-"""Seed two pre-owned domains for a real-world test (no Porkbun purchase).
+"""Seed pre-owned domains so the demo can skip the purchase step.
 
-Use case: the user already bought the domains on Spaceship (or any other
-registrar). We skip the purchase flow and start at DNS configuration.
+Two surfaces:
+  * ``seed_domains(...)``: attach an explicit list of domains to a company
+    (used by the CLI ``--seed-domain`` flag).
+  * ``seed_from_pool(...)``: read the ``owned_domain_pool`` table and grab
+    the first ``n`` available domains. The demo command calls this when no
+    explicit list is provided so the user only has to populate the pool
+    once via ``cli domains pool add`` and re-run.
 """
 from __future__ import annotations
 
@@ -10,7 +15,7 @@ import hashlib
 from sqlalchemy.orm import Session
 
 from app.core.settings import get_settings
-from app.db.models import Company, PurchasedDomain
+from app.db.models import Company, OwnedDomainPool, PurchasedDomain
 
 
 def _idem_key(company_id: str, domain: str) -> str:
@@ -60,4 +65,56 @@ def seed_domains(session: Session, company_id: str, domains: list[str]) -> list[
         session.add(pd)
         session.flush()
         out.append(pd)
+        # Mark the corresponding pool entry as in_use (if any).
+        pool_entry = session.query(OwnedDomainPool).filter_by(domain=d).one_or_none()
+        if pool_entry is not None:
+            pool_entry.status = "in_use"
+            session.flush()
     return out
+
+
+def seed_from_pool(session: Session, company_id: str, *, limit: int) -> list[PurchasedDomain]:
+    """Pull up to ``limit`` ``available`` domains from the pool and seed them."""
+    available = (
+        session.query(OwnedDomainPool)
+        .filter(OwnedDomainPool.status == "available")
+        .order_by(OwnedDomainPool.created_at.asc())
+        .limit(limit)
+        .all()
+    )
+    if not available:
+        return []
+    return seed_domains(session, company_id, [row.domain for row in available])
+
+
+def add_to_pool(session: Session, domain: str, *, notes: str | None = None) -> OwnedDomainPool:
+    domain = domain.strip().lower()
+    if not domain:
+        raise ValueError("domain cannot be empty")
+    existing = session.query(OwnedDomainPool).filter_by(domain=domain).one_or_none()
+    if existing is not None:
+        if notes is not None:
+            existing.notes = notes
+        session.flush()
+        return existing
+    row = OwnedDomainPool(domain=domain, notes=notes, status="available")
+    session.add(row)
+    session.flush()
+    return row
+
+
+def remove_from_pool(session: Session, domain: str) -> bool:
+    row = session.query(OwnedDomainPool).filter_by(domain=domain.strip().lower()).one_or_none()
+    if row is None:
+        return False
+    session.delete(row)
+    session.flush()
+    return True
+
+
+def list_pool(session: Session) -> list[OwnedDomainPool]:
+    return (
+        session.query(OwnedDomainPool)
+        .order_by(OwnedDomainPool.status.asc(), OwnedDomainPool.created_at.asc())
+        .all()
+    )

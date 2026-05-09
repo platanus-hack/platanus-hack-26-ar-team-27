@@ -414,6 +414,23 @@ class AuditLog(Base, TimestampMixin):
     note: Mapped[str | None] = mapped_column(Text)
 
 
+class OwnedDomainPool(Base, TimestampMixin):
+    """Pre-owned domains the demo can pull from instead of purchasing.
+
+    Statuses:
+      - ``available``: free to be assigned to a company by the seeding step.
+      - ``in_use``: already attached to a company's PurchasedDomain row.
+      - ``retired``: kept for history; not eligible for new runs.
+    """
+
+    __tablename__ = "owned_domain_pool"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    domain: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    notes: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(32), default="available", nullable=False)
+
+
 __all__ = [
     "AgentRun",
     "AuditLog",
@@ -427,6 +444,7 @@ __all__ = [
     "EmailEvent",
     "EmailSend",
     "MailgunDomain",
+    "OwnedDomainPool",
     "PurchasedDomain",
     "Suppression",
     "TargetCompany",

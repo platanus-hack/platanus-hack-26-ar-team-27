@@ -93,6 +93,50 @@ def company_confirm(company_id: str = typer.Option(...)):
 # ---------------------------------------------------------------------------
 
 
+domains_pool_app = typer.Typer(help="Manage the pre-owned domain pool")
+domains_app.add_typer(domains_pool_app, name="pool")
+
+
+@domains_pool_app.command("add")
+def domains_pool_add(
+    domain: list[str] = typer.Option(..., "--domain", help="Domain to add (repeat for multiple)"),
+    notes: str | None = typer.Option(None, "--notes"),
+):
+    """Add one or more pre-owned domains to the pool."""
+    _bootstrap()
+    from app.services.seed_real_domains import add_to_pool
+
+    with _session() as session:
+        rows = [add_to_pool(session, d, notes=notes) for d in domain]
+        session.commit()
+        console.print(
+            [{"id": r.id, "domain": r.domain, "status": r.status, "notes": r.notes} for r in rows]
+        )
+
+
+@domains_pool_app.command("list")
+def domains_pool_list():
+    _bootstrap()
+    from app.services.seed_real_domains import list_pool
+
+    with _session() as session:
+        rows = list_pool(session)
+        console.print(
+            [{"id": r.id, "domain": r.domain, "status": r.status, "notes": r.notes} for r in rows]
+        )
+
+
+@domains_pool_app.command("remove")
+def domains_pool_remove(domain: str = typer.Option(...)):
+    _bootstrap()
+    from app.services.seed_real_domains import remove_from_pool
+
+    with _session() as session:
+        ok = remove_from_pool(session, domain)
+        session.commit()
+        console.print({"removed": ok, "domain": domain})
+
+
 @domains_app.command("plan")
 def domains_plan(company_id: str = typer.Option(...)):
     _bootstrap()
@@ -235,7 +279,18 @@ def demo_run_end_to_end(
     seed_domain: list[str] = typer.Option(
         None,
         "--seed-domain",
-        help="Pre-load an externally-purchased domain (skip the purchase step). Repeat to add more.",
+        help="Pre-load an externally-purchased domain (skip the purchase step). Repeat to add more. "
+        "If omitted, available domains in the `owned_domain_pool` table are used automatically.",
+    ),
+    pool_limit: int = typer.Option(
+        2,
+        "--pool-limit",
+        help="When pulling from the pool, take at most this many domains (defaults to the 2-domain hard cap).",
+    ),
+    skip_pool: bool = typer.Option(
+        False,
+        "--skip-pool",
+        help="Force the original purchase flow even if the pool has available domains.",
     ),
     recipient: str | None = typer.Option(
         None,
@@ -250,7 +305,7 @@ def demo_run_end_to_end(
     _bootstrap()
     from app.core.settings import get_settings as _gs
     from app.db.models import Campaign, Contact, PurchasedDomain, Suppression, TargetCompany
-    from app.services.seed_real_domains import seed_domains
+    from app.services.seed_real_domains import seed_domains, seed_from_pool
 
     settings = _gs()
     if execute and not (settings.allow_cold_emails or settings.allow_demo_emails):
@@ -278,13 +333,22 @@ def demo_run_end_to_end(
         _step("✓ Company confirmed", {"id": company.id, "status": company.confirmation_status})
 
         seeded_ids: list[str] = []
+        seeded: list = []
         if seed_domain:
             _step("3. Seeding externally-owned domains (skipping purchase)", {"domains": list(seed_domain)})
             seeded = seed_domains(session, company.id, list(seed_domain))
+        elif not skip_pool:
+            seeded = seed_from_pool(session, company.id, limit=pool_limit)
+            if seeded:
+                _step(
+                    "3. Seeding from owned_domain_pool (skipping purchase)",
+                    {"domains": [d.domain for d in seeded]},
+                )
+        if seeded:
             session.commit()
             seeded_ids = [d.id for d in seeded]
             _step("✓ Seeded", [{"id": d.id, "domain": d.domain, "status": d.status} for d in seeded])
-            _step("4. Purchase step skipped (--seed-domain provided)")
+            _step("4. Purchase step skipped (pre-owned domains in use)")
         else:
             _step("3. Planning domains")
             plan = plan_domains(session, company.id)
