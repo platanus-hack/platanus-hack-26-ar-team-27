@@ -28,11 +28,11 @@
 - [x] 2.5 Smoke test: publicar evento desde script y recibirlo en cliente curl
 
 ### T3 — Catalog + brand brief
-- [ ] 2.6 Implementar `POST /api/catalog/upload` con parser CSV tolerante (papaparse)
-- [ ] 2.7 UI de upload de CSV con drag-drop, validación 5MB, feedback de filas cargadas
-- [ ] 2.8 Implementar `POST /api/brief/upload` con TXT/MD/PDF (pdf-parse)
-- [ ] 2.9 Implementar parser semántico de brief con GPT-4o-mini → estructura `brand_briefs`
-- [ ] 2.10 UI de form de brief (textarea + alternativa upload)
+- [x] 2.6 Implementar `POST /api/catalog` con parser CSV tolerante (papaparse) — endpoint scaffold es `/api/catalog`, no `/upload`
+- [ ] 2.7 UI de upload de CSV con drag-drop, validación 5MB, feedback de filas cargadas (track/2-frontend-launch)
+- [x] 2.8 Implementar `POST /api/brief` con TXT/MD/PDF (pdf-parse)
+- [x] 2.9 Implementar parser semántico de brief con GPT-4o-mini → estructura `brand_briefs`
+- [ ] 2.10 UI de form de brief (textarea + alternativa upload) (track/2-frontend-launch)
 
 ### T3 — Seed de influencers con Playwright (paralelo, día 1 mañana)
 - [ ] 2.11 Definir las 5 categorías y los criterios de selección (followers > 10k, engagement > 2%)
