@@ -1,7 +1,12 @@
 import { redirect } from "next/navigation";
-import { getOrCreateProjectId } from "@/lib/project";
+import { readProjectIdFromCookie } from "@/lib/project";
 
-export default async function Home() {
-  const projectId = await getOrCreateProjectId();
-  redirect(`/dashboard/${projectId}`);
+export const dynamic = "force-dynamic";
+
+export default function Home() {
+  const projectId = readProjectIdFromCookie();
+  if (projectId) {
+    redirect(`/dashboard/${projectId}`);
+  }
+  redirect("/api/init");
 }

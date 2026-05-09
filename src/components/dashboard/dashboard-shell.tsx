@@ -9,7 +9,7 @@ import { ArtifactEmergence } from "@/components/dashboard/artifact-emergence";
 import { HeroSkusSection } from "@/components/dashboard/hero-skus-section";
 import { InfluencerCard, type InfluencerItem } from "@/components/dashboard/influencer-card";
 import { LaunchDemo } from "@/components/dashboard/launch-demo";
-import { OnboardingWizard } from "@/components/dashboard/onboarding-wizard";
+import { OnboardingWizard, type OnboardingPayload } from "@/components/dashboard/onboarding-wizard";
 import { Button } from "@/components/ui/button";
 import {
   DEMO_AGENT_EVENTS_SNAPSHOT,
@@ -77,18 +77,61 @@ export function DashboardShell({ projectId }: DashboardShellProps) {
     [ads],
   );
 
-  async function runOnboardingFlow(payload: { brief: string }) {
+  async function runOnboardingFlow(payload: OnboardingPayload) {
     setLoadingFlow(true);
     setStrategyLoading(true);
     setUiError(null);
 
     try {
-      await fetch("/api/catalog", { method: "POST" }).catch(() => null);
-      await fetch("/api/brief", {
+      const catalogForm = new FormData();
+      catalogForm.append("file", payload.catalogFile);
+      const catalogResponse = await fetch("/api/catalog", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source: "form", text: payload.brief }),
-      }).catch(() => null);
+        body: catalogForm,
+      });
+      if (!catalogResponse.ok) {
+        const detail = await catalogResponse.json().catch(() => ({}));
+        const message = (detail as { message?: string; error?: string }).message
+          ?? (detail as { error?: string }).error
+          ?? `Catalogo: error ${catalogResponse.status}`;
+        setUiError(message);
+        setLoadingFlow(false);
+        setStrategyLoading(false);
+        return;
+      }
+      const catalogJson = (await catalogResponse.json().catch(() => ({}))) as {
+        inserted?: number;
+      };
+
+      let briefResponse: Response;
+      if (payload.briefFile) {
+        const briefForm = new FormData();
+        briefForm.append("file", payload.briefFile);
+        briefResponse = await fetch("/api/brief", {
+          method: "POST",
+          body: briefForm,
+        });
+      } else {
+        briefResponse = await fetch("/api/brief", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ source: "form", text: payload.brief }),
+        });
+      }
+      if (!briefResponse.ok) {
+        const detail = await briefResponse.json().catch(() => ({}));
+        const message = (detail as { message?: string; error?: string }).message
+          ?? (detail as { error?: string }).error
+          ?? `Brief: error ${briefResponse.status}`;
+        setUiError(message);
+        setLoadingFlow(false);
+        setStrategyLoading(false);
+        return;
+      }
+
+      if (typeof catalogJson.inserted === "number" && catalogJson.inserted > 0) {
+        // Feedback opcional: el header global muestra el run via SSE.
+      }
 
       const strategyResponse = await fetch("/api/strategy", { method: "POST" }).catch(() => null);
       const strategyBlocked = !strategyResponse || strategyResponse.status === 501;
