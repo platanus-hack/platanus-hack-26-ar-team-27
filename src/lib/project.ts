@@ -5,7 +5,7 @@
 
 import { cookies } from "next/headers";
 import { randomUUID } from "crypto";
-import { getServiceClient } from "@/lib/supabase/client";
+import { getSql } from "@/lib/db/pg";
 
 const COOKIE_NAME = "rge_project_id";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 días
@@ -17,8 +17,8 @@ export async function getOrCreateProjectId(): Promise<string> {
   if (existing) return existing;
 
   const id = randomUUID();
-  const client = getServiceClient();
-  await client.from("projects").insert({ id });
+  const sql = getSql();
+  await sql`insert into projects (id) values (${id})`;
 
   jar.set(COOKIE_NAME, id, {
     maxAge: COOKIE_MAX_AGE,

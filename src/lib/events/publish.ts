@@ -1,7 +1,7 @@
 /**
  * Publisher del event bus — inserta en `agent_events` (que dispara pg_notify).
  *
- * Usar desde cualquier agente:
+ * Uso desde cualquier agente:
  *
  *   await publishEvent({
  *     kind: 'agent.started',
@@ -13,23 +13,27 @@
  * El `ts` se agrega automáticamente.
  */
 
-import { getServiceClient } from "@/lib/supabase/client";
+import { getSql } from "@/lib/db/pg";
 import { makeEvent, type AgentEvent } from "@/lib/events/types";
 
 export async function publishEvent(
   event: Omit<AgentEvent, "ts">,
 ): Promise<void> {
   const full = makeEvent(event);
-  const client = getServiceClient();
-  const { error } = await client.from("agent_events").insert({
-    project_id: full.projectId,
-    run_id: full.runId,
-    agent: full.agent,
-    kind: full.kind,
-    payload: full,
-  });
-  if (error) {
-    console.error("[publishEvent] failed to insert event", error, full);
-    throw error;
+  const sql = getSql();
+  try {
+    await sql`
+      insert into agent_events (project_id, run_id, agent, kind, payload)
+      values (
+        ${full.projectId},
+        ${full.runId},
+        ${full.agent},
+        ${full.kind},
+        ${sql.json(JSON.parse(JSON.stringify(full)))}
+      )
+    `;
+  } catch (err) {
+    console.error("[publishEvent] failed", err, full);
+    throw err;
   }
 }

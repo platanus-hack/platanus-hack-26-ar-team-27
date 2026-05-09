@@ -46,8 +46,9 @@ Constraints:
 ### D3. Modelos
 - **Strategy Agent + DM Generator + cualquier razonamiento ambiguo:** Claude Sonnet 4.5 (`claude-sonnet-4-5`).
 - **Brand brief parsing + copy gen + tareas baratas:** GPT-4o-mini.
-- **Imágenes:** Replicate Flux Kontext (image-to-image) para mantener fidelidad del producto.
-**Por qué:** Sonnet 4.5 da el mejor razonamiento estructurado para hero SKU prioritization y matching reasoning. GPT-4o-mini es 10x más barato para tareas estructuradas. Flux Kontext es el único modelo accesible que mantiene producto + cambia contexto.
+- **Imágenes:** **MOCKEADAS por default** (`MOCK_IMAGE_GEN=true`) hasta que se integre un modelo NVIDIA gratis. Replicate Flux Kontext queda como opción de fallback pero no se usa en MVP. Mientras tanto, el Creative Engine devuelve placeholders Unsplash de `lib/mocks/images.ts` con `prompt_used` poblado para que la pipeline de copy + persistencia funcione end-to-end.
+**Por qué:** Sonnet 4.5 da el mejor razonamiento estructurado para hero SKU prioritization y matching reasoning. GPT-4o-mini es 10x más barato para tareas estructuradas. Imagen mockeada nos ahorra costo y latencia en demo precocinada — cuando el modelo NVIDIA esté listo, el wrapper se reemplaza sin tocar el resto del Creative Engine.
+**Acción pendiente:** identificar el modelo NVIDIA gratis específico (NIM API? edify-360? Stable Diffusion vía NGC?) y wrapearlo en `lib/agents/creative/image-gen.ts` reemplazando el caller de Replicate.
 
 ### D4. Persistencia: Supabase (Postgres + Storage + Auth + pgvector)
 **Decisión:** Una sola plataforma para DB, storage de imágenes, auth, y embeddings.
@@ -190,7 +191,7 @@ Aesthetic: oscuro elegante (slate-950 background), accent color por agente (Stra
 - **[Brand brief parsing genera estructura incompleta]** → El parser-LLM debe fallback a "extraer lo que se pueda" + dejar campos vacíos. Strategy y Creative agents deben tolerar campos vacíos sin romper.
 - **[Catálogo CSV mal formateado en demo distinto]** → Schema fijo en demo (`sku, name, description, price, cost, stock, category, image_url`), parser tolera columnas faltantes con warning, no crash.
 - **[SSE se cae mid-demo]** → Cliente reconecta y replay desde `agent_events` por `run_id`. Frontend debe ser idempotente al recibir eventos repetidos.
-- **[Replicate sin créditos en demo]** → Tener cuenta backup + flag `MOCK_IMAGE_GEN=true` que devuelve placeholders pre-armados.
+- **[Generación de imagen costosa o lenta en demo]** → Por ahora `MOCK_IMAGE_GEN=true` por default; placeholders Unsplash. Cuando se integre el modelo NVIDIA gratis, flippear a false; si falla en demo, volver a mock con un click.
 - **[Vercel cold start mata streaming]** → Deploy temprano, pingear cada 5min antes de la demo para mantener warm; o usar Edge Functions para los endpoints SSE.
 - **[Race condition entre Strategy y Creative]** → LangGraph maneja secuencia. No paralelizamos Strategy con Creative; sí paralelizamos las 9 imágenes dentro de Creative para un mismo SKU.
 - **[Gastar todos los créditos de Replicate en pruebas]** → Flag de mock + budget cap manual. Cada track pone el flag en true cuando no está testeando flujos de imagen.

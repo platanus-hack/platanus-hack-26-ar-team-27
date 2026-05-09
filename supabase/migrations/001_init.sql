@@ -4,7 +4,7 @@
 -- Para cambios, agregar 002_*.sql, 003_*.sql, etc.
 -- ============================================================
 
-create extension if not exists pgvector;
+create extension if not exists vector;
 create extension if not exists "uuid-ossp";
 
 -- ------------------------------------------------------------

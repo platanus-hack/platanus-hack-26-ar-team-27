@@ -53,10 +53,11 @@
 - [ ] 2.24 Stub del dashboard con slots vacíos (hero SKUs, ad gallery, influencer cards)
 - [ ] 2.25 Sin login: el primer hit del root crea cookie `project_id` con UUID y redirige al dashboard
 
-### T4 — Pipeline de imagen
-- [ ] 2.26 Wrapper de Replicate Flux Kontext con timeout y retry simple
-- [ ] 2.27 Flag `MOCK_IMAGE_GEN` con set de imágenes placeholder pre-armadas
+### T4 — Pipeline de imagen (mockeada por default; NVIDIA después)
+- [ ] 2.26 Wrapper único `generateImage()` en `lib/agents/creative/image-gen.ts` (ya scaffoldeado) — todo caller pasa por acá
+- [ ] 2.27 Flag `MOCK_IMAGE_GEN=true` por **default**: devuelve placeholders Unsplash de `lib/mocks/images.ts` sin llamar a ningún modelo externo
 - [ ] 2.28 Helpers de copy gen con GPT-4o-mini (3 frameworks: PAS / AIDA / curiosity)
+- [ ] 2.28a (Post-MVP / cuando se decida) Integrar modelo NVIDIA gratis dentro de `generateImage()` — identificar modelo concreto (NIM, edify, SD via NGC) y wrapearlo
 
 ### T5 — DevOps + scaffolding launch mock + demo catalog
 - [ ] 2.29 CI básica: typecheck en push, deploy preview en PR

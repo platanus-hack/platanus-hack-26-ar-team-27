@@ -11,16 +11,27 @@ El Creative Engine SHALL generar 9 ads por cada hero SKU: 3 imágenes distintas 
 - **WHEN** el SKU no tiene `primary_image_url`
 - **THEN** el engine skipea la generación de imagen, genera solo los 3 copys con un placeholder visual, marca los registros con `variant_label` indicando "copy-only", y emite un warning.
 
-### Requirement: Image-to-image fiel al producto
-El Creative Engine SHALL usar image-to-image (no text-to-image) para mantener fidelidad del producto en todas las variantes.
+### Requirement: Generación de imagen abstraída detrás de un wrapper
+El Creative Engine SHALL exponer un wrapper `generateImage({ productImageUrl, prompt })` que es el único punto de la base de código que llama al modelo de imagen. La elección del modelo (mock, NVIDIA gratis, Replicate) vive detrás de este wrapper y se controla por feature flag.
 
-#### Scenario: Imagen original es producto en fondo blanco
-- **WHEN** la imagen de input es un packshot
-- **THEN** las 3 variantes generadas mantienen el producto reconocible y solo cambian el contexto/escena.
+#### Scenario: Modo mock (default actual)
+- **WHEN** `MOCK_IMAGE_GEN=true` (default del MVP)
+- **THEN** el wrapper devuelve una URL placeholder de `lib/mocks/images.ts` (sin llamar a ningún modelo externo) con `prompt_used` registrado para auditoría.
 
-#### Scenario: Replicate retorna error o timeout
-- **WHEN** la llamada a Replicate falla
-- **THEN** el engine reintenta una vez, si falla de nuevo marca el creative como `status = 'failed'` con el error, y continúa con el siguiente prompt sin abortar el batch completo.
+#### Scenario: Modo real
+- **WHEN** `MOCK_IMAGE_GEN=false`
+- **THEN** el wrapper invoca el modelo activo (NVIDIA gratis cuando esté integrado, Replicate Flux Kontext como fallback).
+
+#### Scenario: Falla del modelo real
+- **WHEN** la llamada al modelo activo falla o supera timeout
+- **THEN** el engine reintenta una vez; si falla de nuevo marca el creative como `status = 'failed'` con el error y continúa con el siguiente prompt sin abortar el batch.
+
+### Requirement: Fidelidad del producto cuando hay imagen real
+Cuando el modo real está activo, el Creative Engine SHALL preferir image-to-image sobre text-to-image para mantener fidelidad del producto.
+
+#### Scenario: Imagen original es packshot
+- **WHEN** el SKU tiene `primary_image_url` y el modo real está activo
+- **THEN** las 3 variantes generadas usan image-to-image y mantienen el producto reconocible, cambiando solo el contexto/escena.
 
 ### Requirement: Copy alineado a brand brief y SKU
 El Creative Engine SHALL generar copy con GPT-4o-mini usando el brand brief como contexto, respetando `tone_of_voice` y `do_not_say`.
@@ -47,9 +58,9 @@ El sistema SHALL persistir cada output en la tabla `creatives` con `project_id, 
 - **WHEN** Replicate devuelve una URL de imagen válida
 - **THEN** se inserta una fila con `type = 'image'` o `type = 'pair'` (imagen+copy unidos) y `status = 'ready'`.
 
-### Requirement: Modo mock para desarrollo y demo de fallback
-El Creative Engine SHALL respetar una flag `MOCK_IMAGE_GEN` que, cuando está activa, devuelve placeholders pre-armados sin llamar a Replicate.
+### Requirement: Default de demo es mock
+El Creative Engine SHALL respetar `MOCK_IMAGE_GEN=true` como **default del MVP** y solo desactivarlo cuando el modelo de imagen real (NVIDIA gratis) esté integrado y validado.
 
-#### Scenario: Flag activa
-- **WHEN** `MOCK_IMAGE_GEN=true`
-- **THEN** las llamadas a Replicate se sustituyen por URLs de imágenes placeholder y `prompt_used` registra el prompt que se hubiera enviado.
+#### Scenario: Default del repo
+- **WHEN** se clona el repo y se copia `.env.local.example` sin modificar
+- **THEN** `MOCK_IMAGE_GEN=true` y la pipeline corre end-to-end sin requerir crédito ni API key de imagen.
