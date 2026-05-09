@@ -23,8 +23,6 @@ function emit(event: EventInput) {
 }
 
 const COPY_FRAMEWORKS: CopyFramework[] = ["PAS", "AIDA", "curiosity"];
-const PLACEHOLDER_IMAGE_URL =
-  "https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1024";
 
 export interface SkuInput {
   productId: string;
@@ -71,23 +69,12 @@ export async function generateCreativesForSku(
     targetDescription: brief.targetDescription,
   });
 
-  const hasImage = !!sku.primaryImageUrl;
-
-  // Generate all 3 images in parallel within this SKU
+  // Generate all 3 images in parallel within this SKU. generateImage tiene
+  // fallback graceful: si gpt-image-1 falla o falta API key, devuelve un mock
+  // de Unsplash con seed por variante (3 imágenes distintas por SKU).
   const imageResults = await Promise.all(
     imagePrompts.map(async ({ style, prompt }) => {
       const variantLabel = `${sku.sku}:image:${style}`;
-
-      if (!hasImage) {
-        // Task 3.13: SKU without image — use placeholder, mark as copy-only
-        return {
-          style,
-          prompt,
-          imageUrl: PLACEHOLDER_IMAGE_URL,
-          source: "mock" as const,
-          isCopyOnly: true,
-        };
-      }
 
       try {
         const result = await generateImage({
@@ -95,7 +82,13 @@ export async function generateCreativesForSku(
           prompt,
           seed: variantLabel,
         });
-        return { style, prompt, imageUrl: result.url, source: result.source, isCopyOnly: false };
+        return {
+          style,
+          prompt,
+          imageUrl: result.url,
+          source: result.source,
+          isCopyOnly: false,
+        };
       } catch (err) {
         console.error(`[creative] image failed for ${variantLabel}`, err);
 
@@ -133,10 +126,8 @@ export async function generateCreativesForSku(
   for (const imgResult of imageResults) {
     if (!imgResult) continue;
 
-    const { style, prompt, imageUrl, isCopyOnly } = imgResult;
-    const imageVariantLabel = isCopyOnly
-      ? `${sku.sku}:copy-only:${style}`
-      : `${sku.sku}:image:${style}`;
+    const { style, prompt, imageUrl } = imgResult;
+    const imageVariantLabel = `${sku.sku}:image:${style}`;
 
     // Persist image (or placeholder for copy-only)
     const [imageRow] = await sql<{ id: string }[]>`
