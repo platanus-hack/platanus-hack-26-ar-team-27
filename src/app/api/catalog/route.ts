@@ -116,6 +116,10 @@ export async function POST(req: NextRequest) {
     seenSkus.set(sku, { ...row, sku, name });
   });
 
+  // Reemplazar el catálogo del proyecto: una nueva subida = catálogo nuevo.
+  // El cascade en `creatives.product_id` limpia creativos viejos asociados.
+  await sql`delete from products where project_id = ${projectId}`;
+
   let inserted = 0;
   for (const row of seenSkus.values()) {
     try {
@@ -140,14 +144,6 @@ export async function POST(req: NextRequest) {
           ${category},
           ${imageUrl}
         )
-        on conflict (project_id, sku) do update set
-          name = excluded.name,
-          description = excluded.description,
-          price = excluded.price,
-          cost = excluded.cost,
-          stock = excluded.stock,
-          category = excluded.category,
-          primary_image_url = excluded.primary_image_url
       `;
       inserted++;
     } catch (err) {

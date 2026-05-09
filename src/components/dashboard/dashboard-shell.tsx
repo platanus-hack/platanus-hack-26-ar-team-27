@@ -92,6 +92,13 @@ export function DashboardShell({ projectId }: DashboardShellProps) {
   );
 
   async function runOnboardingFlow(payload: OnboardingPayload) {
+    // Borrón y cuenta nueva: si la cookie del proyecto tiene runs anteriores,
+    // queremos que el panel arranque limpio en lugar de mostrar el último run.
+    stream.clearEvents();
+    setHeroSkus([]);
+    setAds([]);
+    setInfluencers([]);
+
     setLoadingFlow(true);
     setStrategyLoading(true);
     setFlowStarted(true);

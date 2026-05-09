@@ -11,7 +11,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { AgentEvent } from "@/lib/events/types";
+import type { AgentEvent, AgentName } from "@/lib/events/types";
 
 type AgentEventInput = AgentEvent extends infer T
   ? T extends AgentEvent
@@ -51,6 +51,16 @@ export function useAgentStream(projectId: string | null) {
     }
 
     setEvents((previous) => [...previous, event]);
+  }, []);
+
+  /**
+   * Limpia los eventos locales (no la conexión SSE). Útil cuando el usuario
+   * arranca un nuevo flow y no queremos que los runs anteriores contaminen
+   * el panel de agentes.
+   */
+  const clearEvents = useCallback(() => {
+    seenKeysRef.current = new Set();
+    setEvents([]);
   }, []);
 
   useEffect(() => {
@@ -114,9 +124,39 @@ export function useAgentStream(projectId: string | null) {
     };
   }, [appendEvent, projectId]);
 
+  /**
+   * Por agente, el runId del último `agent.started` recibido. Define cuál es
+   * el "run actual" para ese agente — los eventos de runs anteriores se
+   * filtran. Esto evita que historiales de la misma cookie/proyecto
+   * contaminen el panel cuando el usuario arranca un flow nuevo.
+   */
+  const currentRunIdByAgent = useMemo(() => {
+    const result: Record<AgentName, string | null> = {
+      strategy: null,
+      creative: null,
+      influencer: null,
+      launch: null,
+    };
+    events.forEach((event) => {
+      if (event.kind === "agent.started") {
+        result[event.agent] = event.runId;
+      }
+    });
+    return result;
+  }, [events]);
+
+  const eventsForCurrentRun = useMemo(
+    () =>
+      events.filter((event) => {
+        const runId = currentRunIdByAgent[event.agent];
+        return runId !== null && event.runId === runId;
+      }),
+    [events, currentRunIdByAgent],
+  );
+
   const artifacts = useMemo<StreamArtifact[]>(
     () =>
-      events
+      eventsForCurrentRun
         .filter((event): event is Extract<AgentEvent, { kind: "artifact.created" }> => event.kind === "artifact.created")
         .map((event, index) => ({
           id: `${event.runId}:${event.ref}:${index}`,
@@ -125,26 +165,26 @@ export function useAgentStream(projectId: string | null) {
           ref: event.ref,
           ts: event.ts,
         })),
-    [events],
+    [eventsForCurrentRun],
   );
 
   const tools = useMemo(
     () =>
-      events.filter(
+      eventsForCurrentRun.filter(
         (event): event is Extract<AgentEvent, { kind: "tool.called" }> => event.kind === "tool.called",
       ),
-    [events],
+    [eventsForCurrentRun],
   );
 
   const thinkingByAgent = useMemo(() => {
     const byAgent: Record<string, string> = {};
-    events.forEach((event) => {
+    eventsForCurrentRun.forEach((event) => {
       if (event.kind === "agent.thinking") {
         byAgent[event.agent] = `${byAgent[event.agent] ?? ""}${event.tokens}`;
       }
     });
     return byAgent;
-  }, [events]);
+  }, [eventsForCurrentRun]);
 
   const agentStatuses = useMemo<Record<AgentEvent["agent"], AgentStatus>>(() => {
     const status: Record<AgentEvent["agent"], AgentStatus> = {
@@ -154,18 +194,18 @@ export function useAgentStream(projectId: string | null) {
       launch: "idle",
     };
 
-    events.forEach((event) => {
+    eventsForCurrentRun.forEach((event) => {
       if (event.kind === "agent.started") status[event.agent] = "active";
       if (event.kind === "agent.completed") status[event.agent] = "done";
       if (event.kind === "agent.failed") status[event.agent] = "failed";
     });
 
     return status;
-  }, [events]);
+  }, [eventsForCurrentRun]);
 
   const activeAgent = useMemo(() => {
-    for (let i = events.length - 1; i >= 0; i -= 1) {
-      const event = events[i];
+    for (let i = eventsForCurrentRun.length - 1; i >= 0; i -= 1) {
+      const event = eventsForCurrentRun[i];
       if (!event) continue;
       if (event.kind === "agent.started" || event.kind === "agent.thinking") {
         return event.agent;
@@ -176,7 +216,7 @@ export function useAgentStream(projectId: string | null) {
     }
 
     return null;
-  }, [events]);
+  }, [eventsForCurrentRun]);
 
   const workingCount = useMemo(
     () => Object.values(agentStatuses).filter((state) => state === "active").length,
@@ -191,7 +231,8 @@ export function useAgentStream(projectId: string | null) {
   );
 
   return {
-    events,
+    events: eventsForCurrentRun,
+    allEvents: events,
     artifacts,
     tools,
     connected,
@@ -201,5 +242,6 @@ export function useAgentStream(projectId: string | null) {
     thinkingByAgent,
     workingCount,
     emitLocalEvent,
+    clearEvents,
   };
 }
