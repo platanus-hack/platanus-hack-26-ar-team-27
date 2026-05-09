@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     demo_mode: bool = True
     database_url: str = "sqlite:///./gtm_mvp.db"
 
+    # Auth + CORS for the deployed backend.
+    backend_api_key: str = ""
+    cors_origins: str = "http://localhost:3000,http://localhost:5173"
+    stream_token_ttl_seconds: int = 60
+
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-sonnet-4-5"
     anthropic_max_tokens: int = 4096
@@ -66,6 +71,10 @@ class Settings(BaseSettings):
 
     HARD_DOMAIN_COUNT_CEILING: int = Field(default=2, frozen=True)
     HARD_DOMAIN_PRICE_CEILING_USD: float = Field(default=4.00, frozen=True)
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [o.strip() for o in (self.cors_origins or "").split(",") if o.strip()]
 
     @model_validator(mode="after")
     def _clamp_hard_caps(self) -> Settings:

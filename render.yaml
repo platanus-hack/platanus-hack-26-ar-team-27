@@ -1,0 +1,87 @@
+# Render Blueprint for the GTM B2B MVP backend.
+# Docs: https://render.com/docs/blueprint-spec
+#
+# How to deploy:
+#   1. Push this file to the main branch.
+#   2. In Render: New + → Blueprint → connect GitHub repo → select main.
+#   3. Render reads this file, creates the web service, and prompts for the
+#      env vars marked `sync: false` below.
+#   4. Paste the values from your local .env into the panel.
+#   5. First deploy runs `alembic upgrade head` then starts uvicorn.
+
+services:
+  - type: web
+    name: gtm-b2b-mvp
+    runtime: python
+    region: oregon
+    plan: starter
+    branch: main
+    rootDir: .
+    buildCommand: pip install --upgrade pip && pip install -e ".[dev]"
+    preDeployCommand: alembic upgrade head
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: DEMO_MODE
+        value: "false"
+
+      - key: BACKEND_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-sonnet-4-5
+      - key: ANTHROPIC_MAX_TOKENS
+        value: "4096"
+      - key: ANTHROPIC_TEMPERATURE
+        value: "0.2"
+
+      - key: SPACESHIP_API_KEY
+        sync: false
+      - key: SPACESHIP_API_SECRET
+        sync: false
+      - key: DNS_PROVIDER
+        value: spaceship
+
+      - key: MAILGUN_API_KEY
+        sync: false
+      - key: MAILGUN_REGION
+        value: US
+      - key: MAILGUN_WEBHOOK_SIGNING_KEY
+        sync: false
+      - key: ALLOW_COLD_EMAILS
+        sync: false
+      - key: ALLOW_DEMO_EMAILS
+        value: "false"
+      - key: DEFAULT_FROM_LOCAL_PART
+        value: warmup
+
+      # Domain purchase is intentionally disabled in the deployed backend;
+      # we use the owned_domain_pool table instead.
+      - key: ALLOW_DOMAIN_PURCHASES
+        value: "false"
+
+      - key: RESEARCH_PROVIDER
+        value: mock
+
+      - key: MAX_TOOL_ITERATIONS
+        value: "8"
+      - key: AGENT_TOTAL_TIMEOUT_SECONDS
+        value: "120"
+      - key: STREAM_TOKEN_TTL_SECONDS
+        value: "60"
