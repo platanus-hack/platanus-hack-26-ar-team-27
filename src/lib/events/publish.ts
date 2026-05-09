@@ -14,12 +14,21 @@
  */
 
 import { getSql } from "@/lib/db/pg";
-import { makeEvent, type AgentEvent } from "@/lib/events/types";
+import { type AgentEvent } from "@/lib/events/types";
+
+type AgentEventInput = AgentEvent extends infer T
+  ? T extends AgentEvent
+    ? Omit<T, "ts">
+    : never
+  : never;
 
 export async function publishEvent(
-  event: Omit<AgentEvent, "ts">,
+  event: AgentEventInput,
 ): Promise<void> {
-  const full = makeEvent(event);
+  const full: AgentEvent = {
+    ...event,
+    ts: new Date().toISOString(),
+  };
   const sql = getSql();
   try {
     await sql`

@@ -29,11 +29,11 @@ Las 3 ramas ya están creadas en remoto. **Para reclamar una**, abrís este arch
 
 ### Tabla de asignaciones — ¡EDITAME!
 
-| Track | Branch | Cubre | Owner | Started At (ISO) | Status |
-|---|---|---|---|---|---|
-| 1 | `track/1-agents-data` | T2 + T3 (event bus, agents, catalog, brief, scraping seed) | Compu 1 | 2026-05-09T08:29:29Z | claimed |
-| 2 | `track/2-frontend-launch` | T1 + T5 (UI completa, agent stage, launch mock, devops, demo polish) | Compu 2 | 2026-05-09T08:29:58Z | claimed |
-| 3 | `track/3-creative` | T4 (Creative Engine: image-gen wrapper + copy gen) | UNCLAIMED | — | open |
+| Track | Branch                    | Cubre                                                                | Owner     | Started At (ISO)     | Status  |
+| ----- | ------------------------- | -------------------------------------------------------------------- | --------- | -------------------- | ------- |
+| 1     | `track/1-agents-data`     | T2 + T3 (event bus, agents, catalog, brief, scraping seed)           | Compu 1   | 2026-05-09T08:29:29Z | claimed |
+| 2     | `track/2-frontend-launch` | T1 + T5 (UI completa, agent stage, launch mock, devops, demo polish) | UNCLAIMED | —                    | open    |
+| 3     | `track/3-creative`        | T4 (Creative Engine: image-gen wrapper + copy gen)                   | Compu 3   | 2026-05-09T08:35:00Z | claimed |
 
 ### Procedimiento de claim (copy-paste)
 
@@ -110,6 +110,7 @@ Si cualquiera de estos pasos falla en `main` recién clonado: avisalo en el grup
 4. Hace commit con un mensaje que cita el task aplicado.
 
 **Por qué es obligatorio:**
+
 - Mantiene `tasks.md` como única fuente de verdad del estado del proyecto.
 - Garantiza que cada feature implementada está cubierta por un spec testeable.
 - Previene drift entre lo que documentamos y lo que está en el código.
@@ -135,6 +136,7 @@ Cuando se te pregunte qué tasks aplicar, **scope a los de tu track** (los códi
 ### Si encontrás algo que no está en tasks.md
 
 No lo agregues por tu cuenta:
+
 1. Si es un task chico que descubriste haciendo otro: agregalo a `tasks.md` con `- [ ] X.Y descripción` en la sección que corresponda y commiteá ese cambio aparte antes de implementarlo.
 2. Si es algo grande (cambia un spec, un contrato, una decisión de design): conversación grupal — **no podés correr `/opsx:apply` para implementar algo que no esté en specs/design**.
 
@@ -180,6 +182,7 @@ Del bloque T3 (data + seed): §2.6-2.10, §2.11-2.17.
    - Validador anti-alucinación.
 
 **Lo que ya tenés scaffolded:**
+
 - `src/lib/events/{types,publish}.ts` (CONTRATO CONGELADO — no editar `types.ts`).
 - `src/lib/db/pg.ts` (postgres clients pooled + direct para LISTEN).
 - `src/lib/agents/{strategy,influencer,creative}/index.ts` (stubs con TODO — solo edita strategy/influencer).
@@ -211,6 +214,7 @@ Del bloque T5 (launch + devops + demo): §2.29-2.33, §5.1-5.12.
 9. Demo polish: pre-cache snapshot de `agent_events` para replay determinista; plan B video.
 
 **Lo que ya tenés scaffolded:**
+
 - `src/app/{layout,page,globals.css}.tsx` (root stubs).
 - `src/components/{agents/agent-stage,agents/use-agent-stream,launch/launch-animation,ui/button}.tsx` (stubs con TODO).
 - `src/lib/utils.ts` con `cn()`, `src/lib/project.ts` con cookie session.
@@ -219,6 +223,7 @@ Del bloque T5 (launch + devops + demo): §2.29-2.33, §5.1-5.12.
 - `src/app/api/campaigns/route.ts` (stub 501 — implementalo vos).
 
 **Mocks para no bloquearte mientras Track 1/Track 3 no terminan:**
+
 - Endpoints upstream devuelven 501 con `{ track: 'TN' }` — capturá ese status y mostrá placeholder.
 - Setear `MOCK_STRATEGY=true` y `MOCK_INFLUENCER=true` en `.env.local`.
 
@@ -242,6 +247,7 @@ Del bloque T4: §2.26-2.28, §2.28a, §3.8-3.13.
 8. **(Post-MVP / cuando se decida)** integrar modelo NVIDIA gratis en `generateImage()` reemplazando el TODO. El resto de la pipeline NO debe cambiar.
 
 **Lo que ya tenés scaffolded:**
+
 - `src/lib/agents/creative/{index,image-gen}.ts` (image-gen tiene mock funcional + TODO para NVIDIA).
 - `src/app/api/creatives/route.ts` (stub 501).
 - `src/lib/mocks/images.ts` con 6 placeholders Unsplash + `pickMockImage(seed)`.
@@ -255,14 +261,14 @@ Del bloque T4: §2.26-2.28, §2.28a, §3.8-3.13.
 
 Estos archivos definen el ABI compartido entre tracks. Si tenés que cambiar uno, **conversación grupal antes**:
 
-| Archivo | Por qué congelado |
-|---|---|
-| `src/lib/events/types.ts` | Contrato `AgentEvent` que usan T1 (consume) y T2/T4/T5 (publish). |
-| `supabase/migrations/001_init.sql` | Schema base. Cambios = `002_*.sql`, `003_*.sql` (append-only). |
-| `src/lib/db/schema.ts` | Append-only: agregá tu schema sin tocar los existentes. |
-| `package.json` versions | Si necesitás bumpear, avisá al grupo. |
-| `tsconfig.json`, `next.config.mjs`, `tailwind.config.ts` | Cambios discutidos. |
-| `.env.local.example` | Append-only. Si agregás key, sumala acá + Vercel + avisá. |
+| Archivo                                                  | Por qué congelado                                                 |
+| -------------------------------------------------------- | ----------------------------------------------------------------- |
+| `src/lib/events/types.ts`                                | Contrato `AgentEvent` que usan T1 (consume) y T2/T4/T5 (publish). |
+| `supabase/migrations/001_init.sql`                       | Schema base. Cambios = `002_*.sql`, `003_*.sql` (append-only).    |
+| `src/lib/db/schema.ts`                                   | Append-only: agregá tu schema sin tocar los existentes.           |
+| `package.json` versions                                  | Si necesitás bumpear, avisá al grupo.                             |
+| `tsconfig.json`, `next.config.mjs`, `tailwind.config.ts` | Cambios discutidos.                                               |
+| `.env.local.example`                                     | Append-only. Si agregás key, sumala acá + Vercel + avisá.         |
 
 Las **dependencias** se agregan vía `pnpm add <pkg>` — eso modifica `package.json` y `pnpm-lock.yaml`. **Commiteá ambos juntos** y avisá.
 
@@ -377,11 +383,11 @@ Después arreglás en una rama nueva. **Nunca** force push a `main`.
 
 Mientras un track upstream no terminó, podés desbloquearte con flags:
 
-| Flag | Efecto | Owner del mock |
-|---|---|---|
-| `MOCK_IMAGE_GEN=true` (default) | No se llama a ningún modelo de imagen; devuelve placeholder Unsplash | `track/3-creative` |
-| `MOCK_STRATEGY=true` | Strategy devuelve `MOCK_STRATEGY_OUTPUT` (canned) | `track/1-agents-data` |
-| `MOCK_INFLUENCER=true` | Matching devuelve primeros 5 del seed | `track/1-agents-data` |
+| Flag                            | Efecto                                                               | Owner del mock        |
+| ------------------------------- | -------------------------------------------------------------------- | --------------------- |
+| `MOCK_IMAGE_GEN=true` (default) | No se llama a ningún modelo de imagen; devuelve placeholder Unsplash | `track/3-creative`    |
+| `MOCK_STRATEGY=true`            | Strategy devuelve `MOCK_STRATEGY_OUTPUT` (canned)                    | `track/1-agents-data` |
+| `MOCK_INFLUENCER=true`          | Matching devuelve primeros 5 del seed                                | `track/1-agents-data` |
 
 Setealos en tu `.env.local` local. Para deploy de Vercel: solo el sysadmin del proyecto los toca.
 

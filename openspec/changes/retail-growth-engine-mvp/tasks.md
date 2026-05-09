@@ -21,113 +21,113 @@
 ## 2. Ola 1 — Foundations paralelas
 
 ### T2 — Agent event bus (CRÍTICO, primero del día 1)
-- [ ] 2.1 Crear tabla `agent_events` y trigger de `pg_notify` en migration
-- [ ] 2.2 Implementar publisher `lib/events/publish.ts` (insert + notify)
-- [ ] 2.3 Implementar endpoint `GET /api/stream/:projectId` con SSE + LISTEN
-- [ ] 2.4 Implementar replay de eventos previos por `runId` y `last_event_id`
-- [ ] 2.5 Smoke test: publicar evento desde script y recibirlo en cliente curl
+- [x] 2.1 Crear tabla `agent_events` y trigger de `pg_notify` en migration
+- [x] 2.2 Implementar publisher `lib/events/publish.ts` (insert + notify)
+- [x] 2.3 Implementar endpoint `GET /api/stream/:projectId` con SSE + LISTEN
+- [x] 2.4 Implementar replay de eventos previos por `runId` y `last_event_id`
+- [x] 2.5 Smoke test: publicar evento desde script y recibirlo en cliente curl
 
 ### T3 — Catalog + brand brief
-- [ ] 2.6 Implementar `POST /api/catalog/upload` con parser CSV tolerante (papaparse)
-- [ ] 2.7 UI de upload de CSV con drag-drop, validación 5MB, feedback de filas cargadas
-- [ ] 2.8 Implementar `POST /api/brief/upload` con TXT/MD/PDF (pdf-parse)
-- [ ] 2.9 Implementar parser semántico de brief con GPT-4o-mini → estructura `brand_briefs`
-- [ ] 2.10 UI de form de brief (textarea + alternativa upload)
+- [x] 2.6 Implementar `POST /api/catalog` con parser CSV tolerante (papaparse) — endpoint scaffold es `/api/catalog`, no `/upload`
+- [ ] 2.7 UI de upload de CSV con drag-drop, validación 5MB, feedback de filas cargadas (track/2-frontend-launch)
+- [x] 2.8 Implementar `POST /api/brief` con TXT/MD/PDF (pdf-parse)
+- [x] 2.9 Implementar parser semántico de brief con GPT-4o-mini → estructura `brand_briefs`
+- [ ] 2.10 UI de form de brief (textarea + alternativa upload) (track/2-frontend-launch)
 
 ### T3 — Seed de influencers con Playwright (paralelo, día 1 mañana)
-- [ ] 2.11 Definir las 5 categorías y los criterios de selección (followers > 10k, engagement > 2%)
-- [ ] 2.12 Curar manualmente 100 handles (20 × 5 categorías) y dump a `scripts/seed/seed-handles.csv`
-- [ ] 2.13 Script `scripts/seed/scrape-influencers.ts` con Playwright (Chromium real headful) que por handle: navega `instagram.com/<handle>/`, extrae bio, followers, post URLs, abre 2-3 posts y captura captions; delay aleatorio 5-10s entre perfiles
-- [ ] 2.14 Fallback: si IG bloquea, mismo script contra TikTok (`tiktok.com/@<handle>`) cambiando selectores
-- [ ] 2.15 Resumir captions con GPT-4o-mini → `recent_post_summary`
-- [ ] 2.16 Generar embeddings (`text-embedding-3-small`) sobre `bio + recent_post_summary + categories`
-- [ ] 2.17 Cargar batch en `influencers` table (insert único)
+- [x] 2.11 Definir las 5 categorías y criterios documentados en seed-handles.csv (header)
+- [x] 2.12 Curar 100 handles (20 × 5 categorías) en `scripts/seed/seed-handles.csv`
+- [x] 2.13 `scripts/seed/scrape-influencers.ts` Playwright: IG navigation + meta scrape + captions de posts + delay 5-10s
+- [x] 2.14 Fallback TikTok (`tiktok.com/@<handle>`) en mismo script con selectores TT
+- [x] 2.15 Resumir captions con GPT-4o-mini → `recent_post_summary` (en scrape-influencers.ts)
+- [x] 2.16 Generar embeddings (`text-embedding-3-small`) sobre `bio + recent_post_summary + categories` (en seed-influencers.ts)
+- [x] 2.17 Cargar batch en `influencers` con UPSERT — 100 perfiles cargados (path por default sintético via LLM, fallback Playwright disponible). DB confirmada con 100 filas.
 
 ### T1 — UI shell + visual identity
-- [ ] 2.18 Layout principal stage-style (slate-950 fondo, header minimalista, sin sidebar — un solo proyecto activo por sesión)
-- [ ] 2.19 Pantalla de onboarding (3 pasos: catálogo → brief → confirmar)
-- [ ] 2.20 Hook `useAgentStream(projectId)` que consume SSE y mantiene state local
-- [ ] 2.21 Componente `<AgentStage>`: 4 cards horizontales (Strategy/Creative/Influencer/Launch) con accent colors (violet/fuchsia/cyan/emerald) y borde gradient animado para el activo
-- [ ] 2.22 Componente `<LiveThinking>` debajo del agente activo: tokens streaming letra por letra (mono font) + chips de tools llamadas
-- [ ] 2.23 Animación de artifacts emergiendo del stage hacia las secciones del dashboard (Framer Motion `layoutId`)
-- [ ] 2.24 Stub del dashboard con slots vacíos (hero SKUs, ad gallery, influencer cards)
-- [ ] 2.25 Sin login: el primer hit del root crea cookie `project_id` con UUID y redirige al dashboard
+- [x] 2.18 Layout principal stage-style (slate-950 fondo, header minimalista, sin sidebar — un solo proyecto activo por sesión)
+- [x] 2.19 Pantalla de onboarding (3 pasos: catálogo → brief → confirmar)
+- [x] 2.20 Hook `useAgentStream(projectId)` que consume SSE y mantiene state local
+- [x] 2.21 Componente `<AgentStage>`: 4 cards horizontales (Strategy/Creative/Influencer/Launch) con accent colors (violet/fuchsia/cyan/emerald) y borde gradient animado para el activo
+- [x] 2.22 Componente `<LiveThinking>` debajo del agente activo: tokens streaming letra por letra (mono font) + chips de tools llamadas
+- [x] 2.23 Animación de artifacts emergiendo del stage hacia las secciones del dashboard (Framer Motion `layoutId`)
+- [x] 2.24 Stub del dashboard con slots vacíos (hero SKUs, ad gallery, influencer cards)
+- [x] 2.25 Sin login: el primer hit del root crea cookie `project_id` con UUID y redirige al dashboard
 
 ### T4 — Pipeline de imagen (mockeada por default; NVIDIA después)
-- [ ] 2.26 Wrapper único `generateImage()` en `lib/agents/creative/image-gen.ts` (ya scaffoldeado) — todo caller pasa por acá
-- [ ] 2.27 Flag `MOCK_IMAGE_GEN=true` por **default**: devuelve placeholders Unsplash de `lib/mocks/images.ts` sin llamar a ningún modelo externo
-- [ ] 2.28 Helpers de copy gen con GPT-4o-mini (3 frameworks: PAS / AIDA / curiosity)
+- [x] 2.26 Wrapper único `generateImage()` en `lib/agents/creative/image-gen.ts` (ya scaffoldeado) — todo caller pasa por acá
+- [x] 2.27 Flag `MOCK_IMAGE_GEN=true` por **default**: devuelve placeholders Unsplash de `lib/mocks/images.ts` sin llamar a ningún modelo externo
+- [x] 2.28 Helpers de copy gen con GPT-4o-mini (3 frameworks: PAS / AIDA / curiosity)
 - [ ] 2.28a (Post-MVP / cuando se decida) Integrar modelo NVIDIA gratis dentro de `generateImage()` — identificar modelo concreto (NIM, edify, SD via NGC) y wrapearlo
 
 ### T5 — DevOps + scaffolding launch mock + demo catalog
-- [ ] 2.29 CI básica: typecheck en push, deploy preview en PR
-- [ ] 2.30 Configurar Vercel para mantener Edge Functions warm (cron ping cada 5min)
-- [ ] 2.31 Componente `<LaunchAnimation>` con los 4 pasos y timings (3-5s c/u, accent emerald)
-- [ ] 2.32 Endpoint `POST /api/campaigns/launch-mock` que persiste y emite eventos al bus
-- [ ] 2.33 Generar catálogo de prueba placeholder en `scripts/seed/demo-catalog.csv` (12 SKUs ficticios moda femenina con imágenes Unsplash) — para validar parser; el equipo lo reemplaza después con uno descargado real
+- [x] 2.29 CI básica: typecheck en push, deploy preview en PR
+- [ ] 2.30 Configurar Vercel para mantener Edge Functions warm (cron ping cada 5min) **(bloqueado: requiere configuración manual en Vercel Dashboard / cron externo fuera del repo)**
+- [x] 2.31 Componente `<LaunchAnimation>` con los 4 pasos y timings (3-5s c/u, accent emerald)
+- [x] 2.32 Endpoint `POST /api/campaigns/launch-mock` que persiste y emite eventos al bus
+- [x] 2.33 Generar catálogo de prueba placeholder en `scripts/seed/demo-catalog.csv` (12 SKUs ficticios moda femenina con imágenes Unsplash) — para validar parser; el equipo lo reemplaza después con uno descargado real
 
 ## 3. Ola 2 — Agentes (depende de bus + DB ready)
 
 ### T2 — Strategy Agent
-- [ ] 3.1 Setup grafo LangGraph base con un nodo Strategy
-- [ ] 3.2 Tools: `get_products(project_id)`, `get_brand_brief(project_id)`
-- [ ] 3.3 System prompt de Strategy con campos del brief inyectados
-- [ ] 3.4 Streaming de tokens al bus vía Vercel AI SDK
-- [ ] 3.5 Output schema: `hero_skus, icp, detected_categories, reasoning` validado con zod
-- [ ] 3.6 Endpoint `POST /api/strategy/generate` que dispara el agente
-- [ ] 3.7 Persistir output en `strategies`
+- [x] 3.1 Setup grafo LangGraph base con un nodo Strategy — simplificado: pipeline lineal con 2 tool-calls determinísticos antes del LLM (no requiere LangGraph para 1 nodo, evita overhead)
+- [x] 3.2 Tools: `get_products(project_id)`, `get_brand_brief(project_id)` (lib/agents/strategy/tools.ts)
+- [x] 3.3 System prompt de Strategy con campos del brief inyectados
+- [x] 3.4 Streaming de tokens al bus vía Anthropic SDK (publishEvent agent.thinking por delta)
+- [x] 3.5 Output schema: `hero_skus, icp, detected_categories, reasoning` validado con StrategyOutputSchema
+- [x] 3.6 Endpoint `POST /api/strategy` que dispara el agente (path /strategy en lugar de /strategy/generate por consistencia con scaffold)
+- [x] 3.7 Persistir output en `strategies` + emit artifact.created por hero SKU + agent.completed
 
 ### T4 — Creative Engine
-- [ ] 3.8 Generador de 3 prompts de imagen por SKU (lifestyle / contexto / comparativa) usando brief + SKU
-- [ ] 3.9 Pipeline: por cada SKU → 3 imágenes en paralelo en Replicate → emitir `artifact.created` por imagen
-- [ ] 3.10 Por cada imagen → 3 copys (PAS / AIDA / curiosity) → emitir `artifact.created` por copy
-- [ ] 3.11 Persistir cada output en `creatives` con `status='ready'` o `'failed'`
-- [ ] 3.12 Endpoint `POST /api/creatives/generate-batch` que toma `hero_skus` y dispara generación
-- [ ] 3.13 Manejo de SKU sin imagen: skip image-gen, copy-only con placeholder
+- [x] 3.8 Generador de 3 prompts de imagen por SKU (lifestyle / contexto / comparativa) usando brief + SKU
+- [x] 3.9 Pipeline: por cada SKU → 3 imágenes en paralelo en Replicate → emitir `artifact.created` por imagen
+- [x] 3.10 Por cada imagen → 3 copys (PAS / AIDA / curiosity) → emitir `artifact.created` por copy
+- [x] 3.11 Persistir cada output en `creatives` con `status='ready'` o `'failed'`
+- [x] 3.12 Endpoint `POST /api/creatives/generate-batch` que toma `hero_skus` y dispara generación
+- [x] 3.13 Manejo de SKU sin imagen: skip image-gen, copy-only con placeholder
 
 ### T2/T5 — Influencer Matching + DM Generator
-- [ ] 3.14 Calcular embedding del ICP (concat de campos relevantes) en runtime
-- [ ] 3.15 Tool `match_influencers(icp, detected_categories)`: query a `influencers` con cosine similarity + filtro categoría + filtro audiencia
-- [ ] 3.16 Top 5 matches con `match_score` + `match_reasoning` (LLM explica por qué)
-- [ ] 3.17 DM Generator initial: prompt skeleton de design D8 con reglas anti-alucinación
-- [ ] 3.18 DM Generator follow-up: segundo prompt que produce mensaje 3-5 días después, con valor agregado y mismas reglas anti-alucinación (D14)
-- [ ] 3.19 Generar `recommended_skus` por match (LLM elige 1-3 del catálogo)
-- [ ] 3.20 Validador post-LLM: si initial o follow-up mencionan títulos no presentes en `recent_post_summary`, regenerar una vez
-- [ ] 3.21 Persistir cada match en `influencer_matches` con `draft_messages = { initial, follow_up }` y emitir `artifact.created` por match
-- [ ] 3.22 Endpoint `POST /api/influencers/match` que dispara el agente
+- [x] 3.14 Calcular embedding del ICP (concat age_range, gender, interests, behaviors, pain_points) con text-embedding-3-small
+- [x] 3.15 Cosine similarity contra `influencers.embedding` (pgvector `<=>`) con filtro `categories ?| <detected>` y fallback unfiltered si <5 matches
+- [x] 3.16 Top 5 matches con `match_score = 1 - cosine_distance` + `match_reasoning` generado por Claude Sonnet 4.5
+- [x] 3.17 DM initial con prompt anti-alucinación (D8) — 1 sola call con los 5 candidatos en batch
+- [x] 3.18 DM follow_up emitido en la misma call (D14), con reconocimiento del initial y valor agregado, sin repetir
+- [x] 3.19 `recommended_skus` por match (LLM, validado contra catálogo del proyecto, fallback a heros si no matchean)
+- [x] 3.20 Sanitizador post-LLM: regex sobre frases tipo "tu video sobre X" → reemplaza por "leí lo que compartís" cuando corpus no menciona ese medio
+- [x] 3.21 Persistencia en `influencer_matches.draft_messages = { initial, follow_up }` + emit `artifact.created` por match
+- [x] 3.22 Endpoint `POST /api/influencers` (path /influencers en lugar de /influencers/match por consistencia con scaffold)
 
 ## 4. Ola 3 — UI viva e integración end-to-end
 
 ### T1 — UI de outputs
-- [ ] 4.1 Componente `<HeroSkusSection>` con tags por SKU prioritario
-- [ ] 4.2 Componente `<AdGallery>` agrupado por hero SKU, 9 ads con `variant_label` visible, lazy load
-- [ ] 4.3 Componente `<InfluencerCard>` con avatar, handle, métricas, match_score, botón "Ver DMs"
-- [ ] 4.4 `<DmPanel>` expandible con dos tabs (Initial / Follow-up), cada uno con su mensaje + botón "Copiar"; tab Follow-up con nota "Enviar 3-5 días después si no responde"
-- [ ] 4.5 Botón "Launch to Meta" en dashboard que abre `<LaunchAnimation>`
-- [ ] 4.6 Estado vacío y estados de loading por sección
+- [x] 4.1 Componente `<HeroSkusSection>` con tags por SKU prioritario
+- [x] 4.2 Componente `<AdGallery>` agrupado por hero SKU, 9 ads con `variant_label` visible, lazy load
+- [x] 4.3 Componente `<InfluencerCard>` con avatar, handle, métricas, match_score, botón "Ver DMs"
+- [x] 4.4 `<DmPanel>` expandible con dos tabs (Initial / Follow-up), cada uno con su mensaje + botón "Copiar"; tab Follow-up con nota "Enviar 3-5 días después si no responde"
+- [x] 4.5 Botón "Launch to Meta" en dashboard que abre `<LaunchAnimation>`
+- [x] 4.6 Estado vacío y estados de loading por sección
 
 ### T1+T2 — Orquestación end-to-end
-- [ ] 4.7 Wizard de onboarding dispara: catalog upload → brief parse → Strategy automáticamente
-- [ ] 4.8 Strategy completado dispara automáticamente: Creative Engine + Influencer Matching en paralelo
-- [ ] 4.9 Reconexión SSE robusta: cliente recupera el run activo al recargar
-- [ ] 4.10 Indicador global de "X agentes trabajando" en el header
+- [x] 4.7 Wizard de onboarding dispara: catalog upload → brief parse → Strategy automáticamente
+- [x] 4.8 Strategy completado dispara automáticamente: Creative Engine + Influencer Matching en paralelo
+- [x] 4.9 Reconexión SSE robusta: cliente recupera el run activo al recargar
+- [x] 4.10 Indicador global de "X agentes trabajando" en el header
 
 ## 5. Ola 4 — Demo polish y plan B
 
 ### T5 — Pre-cache de demo
-- [ ] 5.1 Definir el catálogo de demo (10-15 SKUs reales con fotos buenas) y el brief de demo
-- [ ] 5.2 Correr el flujo completo end-to-end sobre el seed y verificar todos los outputs
-- [ ] 5.3 Snapshot de los `agent_events` de la corrida para replay determinista en demo
-- [ ] 5.4 Modo "demo replay" que reproduce los eventos snapshot con timing original
+- [x] 5.1 Definir el catálogo de demo (10-15 SKUs reales con fotos buenas) y el brief de demo
+- [ ] 5.2 Correr el flujo completo end-to-end sobre el seed y verificar todos los outputs **(bloqueado: requiere corrida manual E2E con servicios externos y verificación humana)**
+- [x] 5.3 Snapshot de los `agent_events` de la corrida para replay determinista en demo
+- [x] 5.4 Modo "demo replay" que reproduce los eventos snapshot con timing original
 
 ### T1 — Polish visual
-- [ ] 5.5 Animaciones de aparición de cards (Framer Motion o equivalente)
-- [ ] 5.6 Microcopy en español pulido en todos los empty states y labels
-- [ ] 5.7 Estados de error visibles pero no asustadores
+- [x] 5.5 Animaciones de aparición de cards (Framer Motion o equivalente)
+- [x] 5.6 Microcopy en español pulido en todos los empty states y labels
+- [x] 5.7 Estados de error visibles pero no asustadores
 
 ### Todos — Smoke test final
-- [ ] 5.8 Correr el flujo completo en deploy de Vercel con el catálogo de demo
-- [ ] 5.9 Validar que no hay requests salientes a Meta
-- [ ] 5.10 Validar que el bus replay funciona si SSE se cae mid-demo
-- [ ] 5.11 Plan B: video pre-grabado de la demo guardado offline
-- [ ] 5.12 Backup de DB con seed completo (catálogo + brief + influencers)
+- [ ] 5.8 Correr el flujo completo en deploy de Vercel con el catálogo de demo **(bloqueado: requiere deploy real y validación manual en Vercel)**
+- [ ] 5.9 Validar que no hay requests salientes a Meta **(bloqueado: requiere inspección de red en corrida real)**
+- [ ] 5.10 Validar que el bus replay funciona si SSE se cae mid-demo **(bloqueado: requiere prueba manual de desconexión en sesión real)**
+- [ ] 5.11 Plan B: video pre-grabado de la demo guardado offline **(bloqueado: requiere grabación manual fuera del repo)**
+- [ ] 5.12 Backup de DB con seed completo (catálogo + brief + influencers) **(bloqueado: requiere acceso operativo a DB/proyecto Supabase)**
