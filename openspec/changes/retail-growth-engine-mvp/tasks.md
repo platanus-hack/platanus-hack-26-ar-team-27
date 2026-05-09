@@ -86,15 +86,15 @@
 - [x] 3.13 Manejo de SKU sin imagen: skip image-gen, copy-only con placeholder
 
 ### T2/T5 — Influencer Matching + DM Generator
-- [ ] 3.14 Calcular embedding del ICP (concat de campos relevantes) en runtime
-- [ ] 3.15 Tool `match_influencers(icp, detected_categories)`: query a `influencers` con cosine similarity + filtro categoría + filtro audiencia
-- [ ] 3.16 Top 5 matches con `match_score` + `match_reasoning` (LLM explica por qué)
-- [ ] 3.17 DM Generator initial: prompt skeleton de design D8 con reglas anti-alucinación
-- [ ] 3.18 DM Generator follow-up: segundo prompt que produce mensaje 3-5 días después, con valor agregado y mismas reglas anti-alucinación (D14)
-- [ ] 3.19 Generar `recommended_skus` por match (LLM elige 1-3 del catálogo)
-- [ ] 3.20 Validador post-LLM: si initial o follow-up mencionan títulos no presentes en `recent_post_summary`, regenerar una vez
-- [ ] 3.21 Persistir cada match en `influencer_matches` con `draft_messages = { initial, follow_up }` y emitir `artifact.created` por match
-- [ ] 3.22 Endpoint `POST /api/influencers/match` que dispara el agente
+- [x] 3.14 Calcular embedding del ICP (concat age_range, gender, interests, behaviors, pain_points) con text-embedding-3-small
+- [x] 3.15 Cosine similarity contra `influencers.embedding` (pgvector `<=>`) con filtro `categories ?| <detected>` y fallback unfiltered si <5 matches
+- [x] 3.16 Top 5 matches con `match_score = 1 - cosine_distance` + `match_reasoning` generado por Claude Sonnet 4.5
+- [x] 3.17 DM initial con prompt anti-alucinación (D8) — 1 sola call con los 5 candidatos en batch
+- [x] 3.18 DM follow_up emitido en la misma call (D14), con reconocimiento del initial y valor agregado, sin repetir
+- [x] 3.19 `recommended_skus` por match (LLM, validado contra catálogo del proyecto, fallback a heros si no matchean)
+- [x] 3.20 Sanitizador post-LLM: regex sobre frases tipo "tu video sobre X" → reemplaza por "leí lo que compartís" cuando corpus no menciona ese medio
+- [x] 3.21 Persistencia en `influencer_matches.draft_messages = { initial, follow_up }` + emit `artifact.created` por match
+- [x] 3.22 Endpoint `POST /api/influencers` (path /influencers en lugar de /influencers/match por consistencia con scaffold)
 
 ## 4. Ola 3 — UI viva e integración end-to-end
 
