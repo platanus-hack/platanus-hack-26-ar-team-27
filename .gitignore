@@ -54,3 +54,4 @@ coverage/
 .cache/
 .turbo/
 .eslintcache
+.vercel
