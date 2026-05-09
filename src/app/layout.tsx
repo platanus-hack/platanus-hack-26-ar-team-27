@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -12,10 +14,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es" className="dark">
-      <body className="min-h-screen bg-slate-950 text-slate-100 antialiased">
-        {children}
-      </body>
+    <html
+      lang="es"
+      className={`${GeistSans.variable} ${GeistMono.variable} dark`}
+      style={
+        {
+          "--sans": GeistSans.style.fontFamily,
+          "--mono": GeistMono.style.fontFamily,
+        } as React.CSSProperties
+      }
+    >
+      <body>{children}</body>
     </html>
   );
 }

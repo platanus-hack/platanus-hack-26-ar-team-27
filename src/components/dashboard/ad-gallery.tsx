@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useMemo, useState } from "react";
 
 type AdItem = {
   id: string;
@@ -15,55 +15,117 @@ type AdGalleryProps = {
   ads: AdItem[];
 };
 
+function parseVariant(label: string): { style: string; framework: string } {
+  const parts = label.split("·").map((s) => s.trim());
+  if (parts.length >= 2 && parts[0] && parts[1]) {
+    return { style: parts[0], framework: parts[1] };
+  }
+  return { style: label, framework: "—" };
+}
+
 export function AdGallery({ loading, ads }: AdGalleryProps) {
-  const grouped = ads.reduce<Record<string, AdItem[]>>((acc, ad) => {
-    const bucket = acc[ad.heroSku] ?? [];
-    bucket.push(ad);
-    acc[ad.heroSku] = bucket;
-    return acc;
-  }, {});
+  const skus = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    ads.forEach((ad) => {
+      if (!seen.has(ad.heroSku)) {
+        seen.add(ad.heroSku);
+        out.push(ad.heroSku);
+      }
+    });
+    return out;
+  }, [ads]);
+
+  const [activeSku, setActiveSku] = useState<string | null>(null);
+
+  const visible = useMemo(() => {
+    const focus = activeSku ?? skus[0] ?? null;
+    if (focus === null) return ads;
+    return ads.filter((ad) => ad.heroSku === focus);
+  }, [ads, activeSku, skus]);
+
+  if (ads.length === 0 && !loading) {
+    return null;
+  }
 
   return (
-    <section className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
-      <h2 className="text-base font-semibold text-slate-100">Ad Gallery</h2>
-      {loading ? <p className="mt-2 text-sm text-slate-400">Generando creativos...</p> : null}
-      {!loading && ads.length === 0 ? (
-        <p className="mt-2 text-sm text-slate-400">Aun no hay anuncios listos. Van a aparecer en vivo a medida que se generen.</p>
+    <section>
+      <div className="section-head">
+        <h2>
+          <span style={{ color: "var(--creative)" }}>●</span>
+          Ad Gallery
+          <span style={{ color: "var(--fg-2)", fontWeight: 400 }}>· 9 variantes por SKU</span>
+        </h2>
+        <span className="meta">
+          {loading ? "generando…" : `${ads.length} creativos · 3 styles × 3 frameworks`}
+        </span>
+      </div>
+
+      {skus.length > 0 ? (
+        <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+          {skus.map((sku) => {
+            const isActive = (activeSku ?? skus[0]) === sku;
+            const count = ads.filter((ad) => ad.heroSku === sku).length;
+            return (
+              <button
+                key={sku}
+                type="button"
+                onClick={() => setActiveSku(sku)}
+                className="btn"
+                style={{
+                  fontFamily: "var(--mono)",
+                  fontSize: 11,
+                  padding: "6px 12px",
+                  background: isActive ? "var(--strategy-soft)" : "var(--bg-2)",
+                  color: isActive ? "var(--strategy)" : "var(--fg-1)",
+                  borderColor: isActive ? "var(--strategy-line)" : "var(--line)",
+                }}
+              >
+                {sku} · {count}
+              </button>
+            );
+          })}
+        </div>
       ) : null}
 
-      <div className="mt-4 space-y-5">
-        {Object.entries(grouped).map(([heroSku, items]) => (
-          <div key={heroSku}>
-            <p className="mb-2 text-sm text-fuchsia-200">{heroSku}</p>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {items.map((ad) => (
-                <motion.article
-                  key={ad.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.25 }}
-                  className="rounded-xl border border-slate-800 bg-slate-950/70 p-3"
-                >
-                  <div className="aspect-[4/5] overflow-hidden rounded-md bg-slate-800">
-                    {ad.asset_url ? (
-                      <img
-                        src={ad.asset_url}
-                        alt={ad.variant_label}
-                        loading="lazy"
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="grid h-full place-items-center text-xs text-slate-500">Sin imagen</div>
-                    )}
+      {loading && ads.length === 0 ? (
+        <div className="card">
+          <p style={{ margin: 0, fontSize: 13, color: "var(--fg-2)" }}>
+            Generando creativos…
+          </p>
+        </div>
+      ) : (
+        <div className="ad-grid">
+          {visible.map((ad, i) => {
+            const { style, framework } = parseVariant(ad.variant_label);
+            return (
+              <article className="ad" key={ad.id}>
+                <div className="ad-img">
+                  {ad.asset_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={ad.asset_url} alt={ad.variant_label} loading="lazy" />
+                  ) : (
+                    <div className="placeholder">
+                      {style}
+                      <small>product shot · {framework}</small>
+                    </div>
+                  )}
+                  <div className="ad-tags">
+                    <span className="ad-tag">{style}</span>
+                    <span className="ad-tag framework">{framework}</span>
                   </div>
-                  <p className="mt-2 text-xs text-slate-400">{ad.variant_label}</p>
-                  <p className="mt-1 line-clamp-3 text-sm text-slate-200">{ad.copy_text ?? "Copy pendiente"}</p>
-                </motion.article>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
+                </div>
+                <div className="ad-body">
+                  <div className="cap">
+                    {ad.heroSku} · variant {i + 1} / {visible.length}
+                  </div>
+                  <div className="copy">{ad.copy_text ?? "Copy pendiente"}</div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }

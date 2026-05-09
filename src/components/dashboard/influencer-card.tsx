@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { DmPanel } from "@/components/dashboard/dm-panel";
-import { motion } from "framer-motion";
 
 export type InfluencerItem = {
   id: string;
@@ -22,42 +20,100 @@ type InfluencerCardProps = {
   influencer: InfluencerItem;
 };
 
+function formatFollowers(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1000) return `${Math.round(n / 1000)}k`;
+  return `${n}`;
+}
+
 export function InfluencerCard({ influencer }: InfluencerCardProps) {
-  const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<"initial" | "follow_up">("initial");
+  const score = Math.round(influencer.match_score * 100);
+  const dash = (score / 100) * 119.4;
+  const message =
+    tab === "initial"
+      ? influencer.draft_messages.initial
+      : influencer.draft_messages.follow_up;
 
   return (
-    <motion.article
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.28 }}
-      className="rounded-xl border border-slate-800 bg-slate-950/70 p-4"
-    >
-      <div className="flex items-start gap-3">
-        <div className="h-12 w-12 overflow-hidden rounded-full bg-slate-800">
-          {influencer.avatar_url ? (
-            <img src={influencer.avatar_url} alt={influencer.display_name} className="h-full w-full object-cover" />
-          ) : null}
+    <article className="inf-card">
+      <div className="inf-head">
+        <div
+          className="inf-av"
+          style={
+            influencer.avatar_url
+              ? { backgroundImage: `url(${influencer.avatar_url})` }
+              : undefined
+          }
+        />
+        <div>
+          <div className="name">{influencer.display_name}</div>
+          <div className="h">@{influencer.handle}</div>
+          <div className="stats">
+            {formatFollowers(influencer.followers_count)} · {influencer.engagement_rate}% ER · IG
+          </div>
         </div>
-        <div className="flex-1">
-          <p className="text-sm font-medium text-slate-100">{influencer.display_name}</p>
-          <p className="text-xs text-cyan-200">@{influencer.handle}</p>
-          <p className="mt-1 text-xs text-slate-400">
-            {`${influencer.followers_count.toLocaleString()} seguidores · ${influencer.engagement_rate}% ER · match ${Math.round(influencer.match_score * 100)}%`}
-          </p>
+        <div className="match-donut">
+          <svg width="46" height="46" viewBox="0 0 46 46">
+            <circle
+              cx="23"
+              cy="23"
+              r="19"
+              stroke="rgba(34,211,238,0.15)"
+              strokeWidth="3"
+              fill="none"
+            />
+            <circle
+              cx="23"
+              cy="23"
+              r="19"
+              stroke="rgb(34 211 238)"
+              strokeWidth="3"
+              fill="none"
+              strokeDasharray={`${dash} 119.4`}
+              strokeLinecap="round"
+            />
+          </svg>
+          <span className="num">{score}</span>
         </div>
-        <button type="button" onClick={() => setOpen((value) => !value)} className="text-xs text-cyan-200">
-          Ver DMs
+      </div>
+
+      <div className="dm-tabs">
+        <button
+          type="button"
+          className={`dm-tab${tab === "initial" ? " is-active" : ""}`}
+          onClick={() => setTab("initial")}
+        >
+          Initial
+        </button>
+        <button
+          type="button"
+          className={`dm-tab${tab === "follow_up" ? " is-active" : ""}`}
+          onClick={() => setTab("follow_up")}
+        >
+          Follow-up
         </button>
       </div>
 
-      {open ? (
-        <div className="mt-3">
-          <DmPanel
-            initialMessage={influencer.draft_messages.initial}
-            followUpMessage={influencer.draft_messages.follow_up}
-          />
-        </div>
-      ) : null}
-    </motion.article>
+      <div className="dm-msg">{message}</div>
+
+      <div className="dm-foot">
+        <button
+          type="button"
+          className="btn"
+          style={{ fontSize: 12 }}
+          onClick={() => {
+            void navigator.clipboard.writeText(message);
+          }}
+        >
+          Copiar
+        </button>
+        {tab === "follow_up" ? (
+          <span className="hint">enviar 3-5 días después</span>
+        ) : (
+          <span className="hint">match score · cosine</span>
+        )}
+      </div>
+    </article>
   );
 }

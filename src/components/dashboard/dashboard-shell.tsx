@@ -2,21 +2,25 @@
 
 import { useMemo, useState } from "react";
 import { AgentStage } from "@/components/agents/agent-stage";
-import { LiveThinking } from "@/components/agents/live-thinking";
 import { useAgentStream } from "@/components/agents/use-agent-stream";
 import { AdGallery } from "@/components/dashboard/ad-gallery";
-import { ArtifactEmergence } from "@/components/dashboard/artifact-emergence";
 import { HeroSkusSection } from "@/components/dashboard/hero-skus-section";
-import { InfluencerCard, type InfluencerItem } from "@/components/dashboard/influencer-card";
+import {
+  InfluencerCard,
+  type InfluencerItem,
+} from "@/components/dashboard/influencer-card";
 import { LaunchDemo } from "@/components/dashboard/launch-demo";
-import { OnboardingWizard, type OnboardingPayload } from "@/components/dashboard/onboarding-wizard";
-import { Button } from "@/components/ui/button";
+import {
+  OnboardingWizard,
+  type OnboardingPayload,
+} from "@/components/dashboard/onboarding-wizard";
+import { LogoMark } from "@/components/brand/logo-mark";
 import {
   DEMO_AGENT_EVENTS_SNAPSHOT,
   type SnapshotEvent,
 } from "@/lib/mocks/agent-events-snapshot";
 import { MOCK_STRATEGY_OUTPUT } from "@/lib/mocks/strategy";
-import { motion } from "framer-motion";
+import type { AgentEvent, AgentName } from "@/lib/events/types";
 
 type DashboardShellProps = {
   projectId: string;
@@ -40,13 +44,15 @@ const MOCK_INFLUENCERS: InfluencerItem[] = [
     engagement_rate: 3.2,
     match_score: 0.91,
     draft_messages: {
-      initial: "Hola Vale, nos encanto tu enfoque de estilo minimalista. Queremos enviarte el Vestido Luna Midi para una colaboracion.",
-      follow_up: "Hola Vale, te escribi hace unos dias por la propuesta del Vestido Luna Midi. Si te sirve, te compartimos fechas y alternativas.",
+      initial:
+        "Hola Vale, nos encantó tu enfoque de estilo minimalista. Queremos enviarte el Vestido Luna Midi para una colaboración orgánica.",
+      follow_up:
+        "Hola Vale, te escribí hace unos días por la propuesta del Vestido Luna Midi. Si te sirve, te compartimos fechas y alternativas.",
     },
   },
 ];
 
-function makeMockAds() {
+function makeMockAds(): AdItem[] {
   return MOCK_STRATEGY_OUTPUT.hero_skus.flatMap((sku) =>
     ["lifestyle", "contexto", "comparativa"].flatMap((style) =>
       ["PAS", "AIDA", "curiosity"].map((framework, index) => ({
@@ -66,11 +72,14 @@ export function DashboardShell({ projectId }: DashboardShellProps) {
   const [strategyLoading, setStrategyLoading] = useState(false);
   const [creativeLoading, setCreativeLoading] = useState(false);
   const [influencerLoading, setInfluencerLoading] = useState(false);
-  const [heroSkus, setHeroSkus] = useState(MOCK_STRATEGY_OUTPUT.hero_skus.slice(0, 0));
+  const [heroSkus, setHeroSkus] = useState(
+    MOCK_STRATEGY_OUTPUT.hero_skus.slice(0, 0),
+  );
   const [ads, setAds] = useState<AdItem[]>([]);
   const [influencers, setInfluencers] = useState<InfluencerItem[]>([]);
   const [uiError, setUiError] = useState<string | null>(null);
   const [replayRunning, setReplayRunning] = useState(false);
+  const [flowStarted, setFlowStarted] = useState(false);
 
   const launchCreativeIds = useMemo(
     () => ads.map((ad) => ad.id).slice(0, 9),
@@ -80,6 +89,7 @@ export function DashboardShell({ projectId }: DashboardShellProps) {
   async function runOnboardingFlow(payload: OnboardingPayload) {
     setLoadingFlow(true);
     setStrategyLoading(true);
+    setFlowStarted(true);
     setUiError(null);
 
     try {
@@ -91,17 +101,15 @@ export function DashboardShell({ projectId }: DashboardShellProps) {
       });
       if (!catalogResponse.ok) {
         const detail = await catalogResponse.json().catch(() => ({}));
-        const message = (detail as { message?: string; error?: string }).message
-          ?? (detail as { error?: string }).error
-          ?? `Catalogo: error ${catalogResponse.status}`;
+        const message =
+          (detail as { message?: string; error?: string }).message ??
+          (detail as { error?: string }).error ??
+          `Catálogo: error ${catalogResponse.status}`;
         setUiError(message);
         setLoadingFlow(false);
         setStrategyLoading(false);
         return;
       }
-      const catalogJson = (await catalogResponse.json().catch(() => ({}))) as {
-        inserted?: number;
-      };
 
       let briefResponse: Response;
       if (payload.briefFile) {
@@ -120,31 +128,36 @@ export function DashboardShell({ projectId }: DashboardShellProps) {
       }
       if (!briefResponse.ok) {
         const detail = await briefResponse.json().catch(() => ({}));
-        const message = (detail as { message?: string; error?: string }).message
-          ?? (detail as { error?: string }).error
-          ?? `Brief: error ${briefResponse.status}`;
+        const message =
+          (detail as { message?: string; error?: string }).message ??
+          (detail as { error?: string }).error ??
+          `Brief: error ${briefResponse.status}`;
         setUiError(message);
         setLoadingFlow(false);
         setStrategyLoading(false);
         return;
       }
 
-      if (typeof catalogJson.inserted === "number" && catalogJson.inserted > 0) {
-        // Feedback opcional: el header global muestra el run via SSE.
-      }
-
-      const strategyResponse = await fetch("/api/strategy", { method: "POST" }).catch(() => null);
-      const strategyBlocked = !strategyResponse || strategyResponse.status === 501;
+      const strategyResponse = await fetch("/api/strategy", {
+        method: "POST",
+      }).catch(() => null);
+      const strategyBlocked =
+        !strategyResponse || strategyResponse.status === 501;
 
       if (strategyBlocked) {
         const fallbackRunId = crypto.randomUUID();
-        stream.emitLocalEvent({ kind: "agent.started", agent: "strategy", runId: fallbackRunId, projectId });
+        stream.emitLocalEvent({
+          kind: "agent.started",
+          agent: "strategy",
+          runId: fallbackRunId,
+          projectId,
+        });
         stream.emitLocalEvent({
           kind: "agent.thinking",
           agent: "strategy",
           runId: fallbackRunId,
           projectId,
-          tokens: "Analizando catalogo y brief...",
+          tokens: "Analizando catálogo y brief...",
         });
         stream.emitLocalEvent({
           kind: "agent.completed",
@@ -175,7 +188,9 @@ export function DashboardShell({ projectId }: DashboardShellProps) {
       setCreativeLoading(false);
       setInfluencerLoading(false);
     } catch {
-      setUiError("No pudimos completar el flujo en vivo. Mostramos datos mock para no frenarte.");
+      setUiError(
+        "No pudimos completar el flujo en vivo. Mostramos datos mock para no frenarte.",
+      );
       setHeroSkus(MOCK_STRATEGY_OUTPUT.hero_skus);
       setAds(makeMockAds());
       setInfluencers(MOCK_INFLUENCERS);
@@ -191,78 +206,440 @@ export function DashboardShell({ projectId }: DashboardShellProps) {
     if (replayRunning) return;
     setReplayRunning(true);
     setUiError(null);
+    setFlowStarted(true);
 
     snapshot.forEach((item, index) => {
       window.setTimeout(() => {
         stream.emitLocalEvent(item.event);
         if (index === snapshot.length - 1) {
           setReplayRunning(false);
+          setHeroSkus(MOCK_STRATEGY_OUTPUT.hero_skus);
+          setAds(makeMockAds());
+          setInfluencers(MOCK_INFLUENCERS);
         }
       }, item.atMs);
     });
   }
 
+  const ribbonState: Record<AgentName, { state: "done" | "active" | "idle"; meta: string }> = {
+    strategy: {
+      state:
+        stream.agentStatuses.strategy === "done"
+          ? "done"
+          : stream.agentStatuses.strategy === "active"
+            ? "active"
+            : heroSkus.length > 0
+              ? "done"
+              : "idle",
+      meta:
+        heroSkus.length > 0
+          ? `${heroSkus.length} hero SKUs`
+          : stream.agentStatuses.strategy === "active"
+            ? "analizando"
+            : "esperando",
+    },
+    creative: {
+      state:
+        stream.agentStatuses.creative === "done"
+          ? "done"
+          : stream.agentStatuses.creative === "active" || creativeLoading
+            ? "active"
+            : ads.length > 0
+              ? "done"
+              : "idle",
+      meta: `${ads.length} / 9 ads`,
+    },
+    influencer: {
+      state:
+        stream.agentStatuses.influencer === "done"
+          ? "done"
+          : stream.agentStatuses.influencer === "active" || influencerLoading
+            ? "active"
+            : influencers.length > 0
+              ? "done"
+              : "idle",
+      meta: `${influencers.length} / 5 matches`,
+    },
+    launch: {
+      state: stream.agentStatuses.launch === "done" ? "done" : "idle",
+      meta: stream.agentStatuses.launch === "done" ? "live" : "esperando",
+    },
+  };
+
+  const runStartedAt = stream.events[0]?.ts;
+
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8 md:px-8">
-        <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-          <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Retail Growth Engine</p>
-            <h1 className="mt-1 text-xl font-semibold text-slate-100">Proyecto activo</h1>
-            <p className="mt-2 font-mono text-xs text-slate-500">{projectId}</p>
+    <main className="ab">
+      <div className="ab-inner">
+        {/* Topbar */}
+        <div className="topbar">
+          <div className="brand">
+            <LogoMark size={32} />
+            <div className="brand-text">
+              <span className="kicker">Retail Growth Engine</span>
+              <span className="name">
+                {flowStarted ? "Run en vivo" : "Nuevo proyecto"}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
-            <p className="text-sm text-slate-300">{stream.workingCount} agentes trabajando</p>
-            <Button
-              variant="outline"
+          <div className="topbar-right">
+            <span className="crumb">
+              <span className="dot" />
+              {stream.workingCount > 0
+                ? `${stream.workingCount} / 4 working`
+                : flowStarted
+                  ? "run idle"
+                  : "setup"}
+              {runStartedAt ? ` · proj_${projectId.slice(0, 4)}` : ""}
+            </span>
+            <button
+              type="button"
+              className="btn btn-ghost"
               onClick={() => runReplay(DEMO_AGENT_EVENTS_SNAPSHOT)}
               disabled={replayRunning}
             >
-              {replayRunning ? "Reproduciendo demo..." : "Modo demo replay"}
-            </Button>
+              {replayRunning ? "Reproduciendo demo…" : "Modo demo replay"}
+            </button>
             <LaunchDemo creativeIds={launchCreativeIds} />
           </div>
-        </header>
+        </div>
 
-        <OnboardingWizard onConfirm={runOnboardingFlow} loading={loadingFlow} />
+        {!flowStarted ? (
+          <OnboardingWizard
+            onConfirm={runOnboardingFlow}
+            loading={loadingFlow}
+          />
+        ) : (
+          <>
+            {/* Phase ribbon */}
+            <div className="ribbon">
+              {(
+                [
+                  { agent: "strategy", n: "01", label: "Strategy" },
+                  { agent: "creative", n: "02", label: "Creative" },
+                  { agent: "influencer", n: "02'", label: "Influencer" },
+                  { agent: "launch", n: "03", label: "Launch" },
+                ] as const
+              ).map(({ agent, n, label }) => {
+                const cfg = ribbonState[agent];
+                const stateClass =
+                  cfg.state === "done"
+                    ? "is-done"
+                    : cfg.state === "active"
+                      ? "is-active"
+                      : "";
+                const accent =
+                  agent === "strategy"
+                    ? "var(--strategy)"
+                    : agent === "creative"
+                      ? "var(--creative)"
+                      : agent === "influencer"
+                        ? "var(--influencer)"
+                        : "var(--launch)";
+                return (
+                  <div
+                    key={agent}
+                    className={`ribbon-step ${stateClass}`}
+                    style={cfg.state === "active" ? { color: accent } : undefined}
+                  >
+                    <span className="step-n">{n}</span>
+                    {cfg.state === "done" ? (
+                      <span style={{ color: "var(--launch)" }}>✓</span>
+                    ) : cfg.state === "active" ? (
+                      <span className="pulse" />
+                    ) : null}
+                    <span
+                      className="step-name"
+                      style={
+                        cfg.state === "idle"
+                          ? { color: "var(--fg-2)" }
+                          : undefined
+                      }
+                    >
+                      {label}
+                    </span>
+                    <span className="step-meta">{cfg.meta}</span>
+                  </div>
+                );
+              })}
+            </div>
 
-        <AgentStage activeAgent={stream.activeAgent} agentStatuses={stream.agentStatuses} />
-        <LiveThinking
-          activeAgent={stream.activeAgent}
-          thinkingByAgent={stream.thinkingByAgent}
-          tools={stream.tools}
-        />
-        <ArtifactEmergence artifacts={stream.artifacts} />
+            {/* Agents grid */}
+            <AgentStage
+              activeAgent={stream.activeAgent}
+              agentStatuses={stream.agentStatuses}
+              thinkingByAgent={stream.thinkingByAgent}
+              tools={stream.tools}
+              artifacts={stream.artifacts}
+            />
 
-        {!stream.connected ? <p className="text-xs text-slate-500">SSE desconectado, usando fallback local.</p> : null}
-        {stream.error ? <p className="text-xs text-amber-300">{stream.error}</p> : null}
-        {uiError ? <p className="text-sm text-amber-300">{uiError}</p> : null}
+            {/* Console */}
+            <Console
+              events={stream.events}
+              artifacts={stream.artifacts}
+              connected={stream.connected}
+              projectId={projectId}
+            />
 
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
-          <HeroSkusSection loading={strategyLoading} skus={heroSkus} />
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
-          <AdGallery loading={creativeLoading} ads={ads} />
-        </motion.div>
+            {(uiError || stream.error) ? (
+              <p
+                style={{
+                  fontSize: 12,
+                  color: "var(--warn)",
+                  fontFamily: "var(--mono)",
+                }}
+              >
+                {uiError ?? stream.error}
+              </p>
+            ) : null}
 
-        <motion.section
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45 }}
-          className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5"
-        >
-          <h2 className="text-base font-semibold text-slate-100">Influencer Matches</h2>
-          {influencerLoading ? <p className="mt-2 text-sm text-slate-400">Buscando creadores...</p> : null}
-          {!influencerLoading && influencers.length === 0 ? (
-            <p className="mt-2 text-sm text-slate-400">Aun no hay matches. Vamos a mostrarlos apenas termine el agente.</p>
-          ) : null}
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {influencers.map((item) => (
-              <InfluencerCard key={item.id} influencer={item} />
-            ))}
-          </div>
-        </motion.section>
+            {/* Outputs */}
+            <HeroSkusSection loading={strategyLoading} skus={heroSkus} />
+
+            <AdGallery loading={creativeLoading} ads={ads} />
+
+            {(influencerLoading || influencers.length > 0) && (
+              <section>
+                <div className="section-head">
+                  <h2>
+                    <span style={{ color: "var(--influencer)" }}>●</span>
+                    Influencer matches
+                    <span style={{ color: "var(--fg-2)", fontWeight: 400 }}>
+                      · con DMs draft
+                    </span>
+                  </h2>
+                  <span className="meta">
+                    {influencerLoading
+                      ? "buscando creadores…"
+                      : `top ${influencers.length} · DMs ancladas a bio + recent posts`}
+                  </span>
+                </div>
+                {influencerLoading && influencers.length === 0 ? (
+                  <div className="card">
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: 13,
+                        color: "var(--fg-2)",
+                      }}
+                    >
+                      Cosine matching contra creators…
+                    </p>
+                  </div>
+                ) : (
+                  <div className="inf-grid">
+                    {influencers.map((item) => (
+                      <InfluencerCard key={item.id} influencer={item} />
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+          </>
+        )}
       </div>
     </main>
   );
+}
+
+/* ===================== Console (event log + artifact stream) ===================== */
+
+type ConsoleProps = {
+  events: AgentEvent[];
+  artifacts: ReturnType<typeof useAgentStream>["artifacts"];
+  connected: boolean;
+  projectId: string;
+};
+
+function Console({ events, artifacts, connected, projectId }: ConsoleProps) {
+  const [tab, setTab] = useState<"all" | "thinking" | "tools" | "artifacts">(
+    "all",
+  );
+
+  const filtered = events
+    .filter((e) => {
+      if (tab === "all") return true;
+      if (tab === "thinking") return e.kind === "agent.thinking";
+      if (tab === "tools")
+        return e.kind === "tool.called" || e.kind === "tool.result";
+      if (tab === "artifacts") return e.kind === "artifact.created";
+      return true;
+    })
+    .slice(-12)
+    .reverse();
+
+  return (
+    <div className="console">
+      <div className="console-main">
+        <div className="console-head">
+          <div className="row" style={{ gap: 8 }}>
+            <span className="kicker">Live event bus</span>
+            <span
+              style={{
+                fontFamily: "var(--mono)",
+                fontSize: 10,
+                color: "var(--fg-3)",
+              }}
+            >
+              /api/stream/{projectId.slice(0, 8)} ·{" "}
+              {connected ? "SSE conectado" : "reconectando…"}
+            </span>
+          </div>
+          <div className="console-tabs">
+            {(["all", "thinking", "tools", "artifacts"] as const).map((key) => (
+              <button
+                key={key}
+                type="button"
+                className={`console-tab${tab === key ? " is-active" : ""}`}
+                onClick={() => setTab(key)}
+              >
+                {key === "all" ? "Todos" : key}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="log">
+          {filtered.length === 0 ? (
+            <div className="row">
+              <span className="ts">—</span>
+              <span className="mute">
+                Sin eventos todavía. Confirmá el wizard o reproducí el demo.
+              </span>
+            </div>
+          ) : (
+            filtered.map((event, i) => <LogRow key={i} event={event} />)
+          )}
+        </div>
+      </div>
+
+      <div className="console-side">
+        <div className="kicker">Artifact stream</div>
+        <div className="artifact-stream">
+          {artifacts.length === 0 ? (
+            <div
+              style={{
+                fontFamily: "var(--mono)",
+                fontSize: 10.5,
+                color: "var(--fg-3)",
+              }}
+            >
+              Sin artifacts
+            </div>
+          ) : (
+            artifacts
+              .slice(-6)
+              .reverse()
+              .map((a) => (
+                <div className="artifact-pill" key={a.id}>
+                  <span
+                    className={`dot ${
+                      a.agent === "strategy"
+                        ? "s"
+                        : a.agent === "creative"
+                          ? "c"
+                          : a.agent === "influencer"
+                            ? "i"
+                            : "l"
+                    }`}
+                  />
+                  <span>{a.type}</span>
+                  <span className="ref">{a.ref}</span>
+                  <span className="when">{relativeTime(a.ts)}</span>
+                </div>
+              ))
+          )}
+        </div>
+        <div
+          style={{
+            marginTop: "auto",
+            padding: "10px 12px",
+            border: "1px dashed var(--line)",
+            borderRadius: 12,
+            fontFamily: "var(--mono)",
+            fontSize: 10.5,
+            color: "var(--fg-2)",
+            lineHeight: 1.55,
+          }}
+        >
+          <span style={{ color: "var(--fg)" }}>tip</span> · cerrá la pestaña
+          tranquilo, el run sigue en background y los eventos se replayean por{" "}
+          <span style={{ color: "var(--fg)" }}>?since=&lt;event_id&gt;</span> al
+          volver.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LogRow({ event }: { event: AgentEvent }) {
+  const ts = formatTimestamp(event.ts);
+  const agentClass =
+    event.agent === "strategy"
+      ? "ag-strategy"
+      : event.agent === "creative"
+        ? "ag-creative"
+        : event.agent === "influencer"
+          ? "ag-influencer"
+          : "ag-launch";
+  const detail = describeEvent(event);
+
+  return (
+    <div className="row">
+      <span className="ts">{ts}</span>
+      <span className={agentClass}>{event.agent}</span>
+      <span className="kind">{event.kind}</span>
+      <span>{detail}</span>
+    </div>
+  );
+}
+
+function describeEvent(event: AgentEvent): React.ReactNode {
+  if (event.kind === "agent.started") return "iniciando";
+  if (event.kind === "agent.thinking") {
+    const head = event.tokens.slice(0, 80);
+    return (
+      <span className="mute">
+        “{head}
+        {event.tokens.length > 80 ? "…" : ""}”
+      </span>
+    );
+  }
+  if (event.kind === "tool.called") return event.tool;
+  if (event.kind === "tool.result") return `${event.tool} → ok`;
+  if (event.kind === "artifact.created")
+    return (
+      <>
+        {event.type} · {event.ref}
+      </>
+    );
+  if (event.kind === "agent.completed")
+    return <span className="ok">{event.summary}</span>;
+  if (event.kind === "agent.failed")
+    return <span style={{ color: "var(--warn)" }}>{event.error}</span>;
+  return null;
+}
+
+function formatTimestamp(iso: string): string {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleTimeString("en-GB", { hour12: false });
+  } catch {
+    return "—";
+  }
+}
+
+function relativeTime(iso: string): string {
+  try {
+    const ms = Date.now() - new Date(iso).getTime();
+    if (ms < 1000) return "ahora";
+    const s = Math.floor(ms / 1000);
+    if (s < 60) return `−${s}s`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `−${m}m`;
+    const h = Math.floor(m / 60);
+    return `−${h}h`;
+  } catch {
+    return "—";
+  }
 }

@@ -12,24 +12,43 @@ type HeroSkusSectionProps = {
 };
 
 export function HeroSkusSection({ loading, skus }: HeroSkusSectionProps) {
+  if (skus.length === 0 && !loading) {
+    return null;
+  }
+
   return (
-    <section className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
-      <h2 className="text-base font-semibold text-slate-100">Hero SKUs</h2>
-      {loading ? <p className="mt-2 text-sm text-slate-400">Analizando catalogo...</p> : null}
-      {!loading && skus.length === 0 ? (
-        <p className="mt-2 text-sm text-slate-400">Aun no priorizamos SKUs. En cuanto termine Strategy los vas a ver aca.</p>
-      ) : null}
-      <div className="mt-3 flex flex-wrap gap-2">
-        {skus.map((item) => (
-          <span
-            key={item.sku}
-            className="rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs text-violet-200"
-            title={item.reason}
-          >
-            {`${item.sku} · ${Math.round(item.priority_score * 100)}%`}
-          </span>
-        ))}
+    <section>
+      <div className="section-head">
+        <h2>
+          <span style={{ color: "var(--strategy)" }}>●</span>
+          Hero SKUs
+          <span style={{ color: "var(--fg-2)", fontWeight: 400 }}>· del Strategy Agent</span>
+        </h2>
+        <span className="meta">
+          {loading ? "analizando…" : `${skus.length} priorizados`}
+        </span>
       </div>
+
+      {loading && skus.length === 0 ? (
+        <div className="card">
+          <p style={{ margin: 0, fontSize: 13, color: "var(--fg-2)" }}>
+            Analizando catálogo y brief…
+          </p>
+        </div>
+      ) : (
+        <div className="heros">
+          {skus.map((h) => (
+            <div className="hero-sku" key={h.sku}>
+              <div className="row1">
+                <span className="sku">{h.sku}</span>
+                <span className="pill">{Math.round(h.priority_score * 100)}% priority</span>
+              </div>
+              <div className="name">{h.sku}</div>
+              <div className="reason">{h.reason}</div>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
