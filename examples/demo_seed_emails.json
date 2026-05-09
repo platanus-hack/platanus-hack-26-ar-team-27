@@ -1,0 +1,8 @@
+{
+  "seed_addresses": [
+    "warmup@helio-domain-a.com",
+    "warmup@helio-domain-b.com",
+    "founder@helio-domain-a.com"
+  ],
+  "note": "These addresses are owned by the demo company and used as warmup endpoints. Never use external addresses here."
+}

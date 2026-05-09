@@ -1,0 +1,11 @@
+{
+  "raw_input": "Helio Robotics is a B2B SaaS that helps mid-market manufacturers schedule predictive maintenance on industrial robots. We have a working MVP that ingests robot telemetry, detects anomalies and books service appointments automatically. We are a small team (5 engineers + 1 founder) and we want to reach about 50 manufacturing companies in LATAM with 50–500 employees. Our ICP is plant managers and operations directors who already track downtime as a KPI.",
+  "files": [
+    {
+      "name": "one_pager.pdf",
+      "content_type": "application/pdf",
+      "size_bytes": 184321,
+      "note": "Product one-pager with pricing tiers"
+    }
+  ]
+}

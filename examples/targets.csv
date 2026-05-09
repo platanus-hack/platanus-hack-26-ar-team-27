@@ -1,0 +1,27 @@
+name,domain,industry,size_range,location,contact_name,contact_title,contact_email
+Aurora Manufacturing,auroramfg.example,Manufacturing,201+,Mexico City,Lucía Mendoza,Plant Manager,lucia.mendoza@auroramfg.example
+Cobalt Industries,cobaltindustries.example,Industrial,51-200,Monterrey,Hernán Vidal,Operations Director,hernan.vidal@cobaltindustries.example
+Solaris Foods,solarisfoods.example,FoodTech,51-200,São Paulo,Marina Costa,VP Operations,marina.costa@solarisfoods.example
+Dynamo Robotics,dynamorobotics.example,Robotics,11-50,Bogotá,Julián Restrepo,Head of Maintenance,julian.restrepo@dynamorobotics.example
+Pampa Plastics,pampaplastics.example,Plastics,201+,Buenos Aires,Carolina Ríos,Director of Production,carolina.rios@pampaplastics.example
+Helios Steel,heliossteel.example,Metallurgy,51-200,Santiago,Esteban Rojas,Chief Operations Officer,esteban.rojas@heliossteel.example
+Kintsugi Studio,kintsugistudio.example,Design,11-50,Bogotá,Aisha Patel,Director of Growth,aisha.patel@kintsugistudio.example
+Northwind Logistics,northwindlogistics.example,Logistics,201+,Buenos Aires,Mateo Suárez,VP Engineering,mateo.suarez@northwindlogistics.example
+Lumen Foods,lumenfoods.example,FoodTech,51-200,Santiago,Carolina Pereyra,Head of Operations,carolina.pereyra@lumenfoods.example
+Andes Energy,andesenergy.example,Energy,201+,Lima,Daniel Quispe,Director of Plant Engineering,daniel.quispe@andesenergy.example
+Pacífico Minerals,pacificominerals.example,Mining,201+,Lima,Sofia Chávez,Operations Manager,sofia.chavez@pacificominerals.example
+Caribe Chemicals,caribechemicals.example,Chemicals,51-200,Cartagena,Roberto Pérez,Plant Director,roberto.perez@caribechemicals.example
+Patagonia Auto,patagoniaauto.example,Automotive,201+,Córdoba,Florencia Fernández,Head of Manufacturing,florencia.fernandez@patagoniaauto.example
+Atacama Glass,atacamaglass.example,Materials,11-50,Antofagasta,Diego López,Maintenance Lead,diego.lopez@atacamaglass.example
+Cerrado AgriTech,cerradoagritech.example,AgriTech,51-200,São Paulo,Renata Almeida,VP Operations,renata.almeida@cerradoagritech.example
+Selva Pharma,selvapharma.example,Pharma,201+,Quito,Andrés Salazar,Director of Plant Operations,andres.salazar@selvapharma.example
+Iguazú Beverages,iguazubeverages.example,Beverage,51-200,Posadas,Lorena Acosta,Plant Manager,lorena.acosta@iguazubeverages.example
+Rio Textiles,riotextiles.example,Textile,201+,Rio de Janeiro,Pedro Lima,Operations Director,pedro.lima@riotextiles.example
+Cusco Cement,cuscocement.example,Construction,201+,Cusco,Marta Gutiérrez,Head of Production,marta.gutierrez@cuscocement.example
+Magdalena Paper,magdalenapaper.example,Pulp & Paper,51-200,Medellín,Tomás Henao,Maintenance Lead,tomas.henao@magdalenapaper.example
+Andina Dairy,andinadairy.example,Dairy,11-50,La Paz,Camila Rojas,Plant Manager,camila.rojas@andinadairy.example
+Pampas Snacks,pampassnacks.example,Snacks,51-200,Rosario,Joaquín Gómez,Operations Manager,joaquin.gomez@pampassnacks.example
+Caribe Frozen,caribefrozen.example,Frozen Foods,51-200,Barranquilla,Patricia Núñez,Director of Operations,patricia.nunez@caribefrozen.example
+Sertão Logistics,sertaologistics.example,Logistics,201+,Recife,Marcelo Torres,Operations Director,marcelo.torres@sertaologistics.example
+Volcán Energy,volcanenergy.example,Energy,11-50,Quito,Daniela Vargas,Head of Maintenance,daniela.vargas@volcanenergy.example
+Salinas Salt,salinassalt.example,Mining,11-50,Salta,Luis Romero,Plant Manager,luis.romero@salinassalt.example
