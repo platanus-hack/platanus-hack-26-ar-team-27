@@ -2,14 +2,16 @@
  * Wrapper único para generación de imagen.
  *
  * Toda llamada a un modelo de imagen pasa por este archivo.
- * Cambiar de proveedor (mock → NVIDIA gratis → Replicate) NO debe requerir
+ * Cambiar de proveedor (mock → OpenAI gpt-image-1 → otros) NO debe requerir
  * tocar el resto del Creative Engine.
  *
  * OWNER: Track 4.
  *
- * Default del MVP (decision D3): MOCK_IMAGE_GEN=true.
+ * Default actual: OpenAI gpt-image-1 con quality=low (~$0.011/img, lo más
+ * barato del catálogo). MOCK_IMAGE_GEN=true fuerza placeholders Unsplash.
  */
 
+import OpenAI from "openai";
 import { pickMockImage } from "@/lib/mocks/images";
 
 export interface GenerateImageParams {
@@ -25,13 +27,13 @@ export interface GenerateImageResult {
   url: string;
   promptUsed: string;
   /** Identificador del backend que generó la imagen. */
-  source: "mock" | "nvidia" | "replicate";
+  source: "mock" | "openai";
 }
 
 export async function generateImage(
   params: GenerateImageParams,
 ): Promise<GenerateImageResult> {
-  const mockEnabled = process.env.MOCK_IMAGE_GEN !== "false";
+  const mockEnabled = process.env.MOCK_IMAGE_GEN === "true";
 
   if (mockEnabled) {
     return {
@@ -41,16 +43,44 @@ export async function generateImage(
     };
   }
 
-  // TODO: integrar modelo NVIDIA gratis acá (Track 4).
-  //   const url = await callNvidiaModel(params);
-  //   return { url, promptUsed: params.prompt, source: 'nvidia' };
-  //
-  // Fallback futuro a Replicate Flux Kontext si NVIDIA falla:
-  //   const url = await callReplicate(params);
-  //   return { url, promptUsed: params.prompt, source: 'replicate' };
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    console.warn(
+      "[image-gen] OPENAI_API_KEY missing — fallback a mock Unsplash.",
+    );
+    return {
+      url: pickMockImage(params.seed),
+      promptUsed: params.prompt,
+      source: "mock",
+    };
+  }
 
-  throw new Error(
-    "MOCK_IMAGE_GEN=false but no real provider implemented yet. " +
-      "Track 4: integrar modelo NVIDIA gratis en lib/agents/creative/image-gen.ts.",
-  );
+  const openai = new OpenAI({ apiKey });
+
+  try {
+    const response = await openai.images.generate({
+      model: "gpt-image-1",
+      prompt: params.prompt,
+      size: "1024x1024",
+      quality: "low",
+      n: 1,
+    });
+    const b64 = response.data?.[0]?.b64_json;
+    if (!b64) throw new Error("no_image_in_response");
+    return {
+      url: `data:image/png;base64,${b64}`,
+      promptUsed: params.prompt,
+      source: "openai",
+    };
+  } catch (err) {
+    console.error(
+      "[image-gen] OpenAI gpt-image-1 falló — fallback a mock.",
+      err,
+    );
+    return {
+      url: pickMockImage(params.seed),
+      promptUsed: params.prompt,
+      source: "mock",
+    };
+  }
 }

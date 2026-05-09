@@ -56,7 +56,12 @@ function makeMockAds(): AdItem[] {
   return MOCK_STRATEGY_OUTPUT.hero_skus.flatMap((sku) =>
     ["lifestyle", "contexto", "comparativa"].flatMap((style) =>
       ["PAS", "AIDA", "curiosity"].map((framework, index) => ({
-        id: `${sku.sku}-${style}-${framework}`,
+        // crypto.randomUUID() para que LaunchDemo (Zod .uuid()) acepte los IDs
+        // cuando caemos al mock.
+        id:
+          typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `${sku.sku}-${style}-${framework}-${index}`,
         heroSku: sku.sku,
         variant_label: `${style} · ${framework}`,
         asset_url: `https://picsum.photos/seed/${sku.sku}-${style}-${index}/500/640`,
@@ -93,6 +98,7 @@ export function DashboardShell({ projectId }: DashboardShellProps) {
     setUiError(null);
 
     try {
+      // 1. Catálogo
       const catalogForm = new FormData();
       catalogForm.append("file", payload.catalogFile);
       const catalogResponse = await fetch("/api/catalog", {
@@ -111,6 +117,7 @@ export function DashboardShell({ projectId }: DashboardShellProps) {
         return;
       }
 
+      // 2. Brief
       let briefResponse: Response;
       if (payload.briefFile) {
         const briefForm = new FormData();
@@ -138,34 +145,27 @@ export function DashboardShell({ projectId }: DashboardShellProps) {
         return;
       }
 
-      const strategyResponse = await fetch("/api/strategy", {
-        method: "POST",
-      }).catch(() => null);
-      const strategyBlocked =
-        !strategyResponse || strategyResponse.status === 501;
-
-      if (strategyBlocked) {
-        const fallbackRunId = crypto.randomUUID();
-        stream.emitLocalEvent({
-          kind: "agent.started",
-          agent: "strategy",
-          runId: fallbackRunId,
-          projectId,
-        });
-        stream.emitLocalEvent({
-          kind: "agent.thinking",
-          agent: "strategy",
-          runId: fallbackRunId,
-          projectId,
-          tokens: "Analizando catálogo y brief...",
-        });
-        stream.emitLocalEvent({
-          kind: "agent.completed",
-          agent: "strategy",
-          runId: fallbackRunId,
-          projectId,
-          summary: "Strategy mock completado",
-        });
+      // 3. Strategy — corre real y devuelve { strategy_id, output }
+      let strategyId: string | null = null;
+      try {
+        const strategyResponse = await fetch("/api/strategy", { method: "POST" });
+        if (strategyResponse.ok) {
+          const json = (await strategyResponse.json()) as {
+            strategy_id?: string;
+            output?: { hero_skus?: typeof MOCK_STRATEGY_OUTPUT.hero_skus };
+          };
+          strategyId = json.strategy_id ?? null;
+          if (json.output?.hero_skus?.length) {
+            setHeroSkus(json.output.hero_skus);
+          }
+        } else {
+          throw new Error(`strategy ${strategyResponse.status}`);
+        }
+      } catch (err) {
+        console.error("[runOnboardingFlow] strategy failed, fallback mock", err);
+        setUiError(
+          "Strategy en vivo falló — usando mock para que el demo siga.",
+        );
         setHeroSkus(MOCK_STRATEGY_OUTPUT.hero_skus);
       }
 
@@ -173,21 +173,56 @@ export function DashboardShell({ projectId }: DashboardShellProps) {
       setCreativeLoading(true);
       setInfluencerLoading(true);
 
-      const [creativesResponse, influencersResponse] = await Promise.all([
-        fetch("/api/creatives", { method: "POST" }).catch(() => null),
-        fetch("/api/influencers", { method: "POST" }).catch(() => null),
+      // 4. Creative + Influencer en paralelo
+      const [creativesResult, influencersResult] = await Promise.allSettled([
+        (async () => {
+          const body = strategyId ? JSON.stringify({ strategyId }) : "{}";
+          const res = await fetch("/api/creatives", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body,
+          });
+          if (!res.ok) throw new Error(`creatives ${res.status}`);
+          return res.json() as Promise<{ creatives?: AdItem[] }>;
+        })(),
+        (async () => {
+          const res = await fetch("/api/influencers", { method: "POST" });
+          if (!res.ok) throw new Error(`influencers ${res.status}`);
+          return res.json() as Promise<{ matches?: InfluencerItem[] }>;
+        })(),
       ]);
 
-      if (!creativesResponse || creativesResponse.status === 501) {
+      if (
+        creativesResult.status === "fulfilled" &&
+        creativesResult.value.creatives?.length
+      ) {
+        setAds(creativesResult.value.creatives);
+      } else {
+        if (creativesResult.status === "rejected") {
+          console.error("[runOnboardingFlow] creatives failed", creativesResult.reason);
+        }
         setAds(makeMockAds());
       }
-      if (!influencersResponse || influencersResponse.status === 501) {
+
+      if (
+        influencersResult.status === "fulfilled" &&
+        influencersResult.value.matches?.length
+      ) {
+        setInfluencers(influencersResult.value.matches);
+      } else {
+        if (influencersResult.status === "rejected") {
+          console.error(
+            "[runOnboardingFlow] influencers failed",
+            influencersResult.reason,
+          );
+        }
         setInfluencers(MOCK_INFLUENCERS);
       }
 
       setCreativeLoading(false);
       setInfluencerLoading(false);
-    } catch {
+    } catch (err) {
+      console.error("[runOnboardingFlow] unexpected", err);
       setUiError(
         "No pudimos completar el flujo en vivo. Mostramos datos mock para no frenarte.",
       );
