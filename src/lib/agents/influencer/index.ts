@@ -29,6 +29,13 @@ import {
   IcpSchema,
   InfluencerCategoryEnum,
 } from "@/lib/db/schema";
+import {
+  embedProfile,
+  pickCandidates,
+  scrapeBatch,
+  upsertInfluencer,
+  type ScrapeProgress,
+} from "./scrape";
 
 const MODEL = "claude-sonnet-4-5";
 
@@ -129,6 +136,21 @@ export async function matchInfluencers(args: {
   });
 
   const products = await getProducts(projectId);
+
+  // Scrape live: agarra N handles del seed CSV filtrados por las categorías
+  // detectadas, los scrapea con Playwright y los UPSERTea con embedding fresco.
+  // Si falla todo, seguimos con el pool seedeado (no rompe el flow).
+  if (process.env.LIVE_SCRAPE !== "false") {
+    try {
+      await runScrapePhase({
+        projectId,
+        runId,
+        detectedCategories,
+      });
+    } catch (err) {
+      console.error("[influencer] scrape phase failed, continuing", err);
+    }
+  }
 
   await publishEvent({
     kind: "tool.called",
@@ -247,6 +269,96 @@ export async function matchInfluencers(args: {
   });
 
   return { matchIds };
+}
+
+// ============================================================
+// scrape phase
+// ============================================================
+
+async function runScrapePhase(args: {
+  projectId: string;
+  runId: string;
+  detectedCategories: string[];
+}): Promise<void> {
+  const { projectId, runId, detectedCategories } = args;
+  const limit = Number(process.env.SCRAPE_LIMIT ?? 5);
+
+  await publishEvent({
+    kind: "tool.called",
+    agent: "influencer",
+    runId,
+    projectId,
+    tool: "pick_candidates",
+    input: { categories: detectedCategories, limit },
+  });
+
+  const candidates = pickCandidates(detectedCategories, limit);
+
+  await publishEvent({
+    kind: "tool.result",
+    agent: "influencer",
+    runId,
+    projectId,
+    tool: "pick_candidates",
+    output: {
+      count: candidates.length,
+      handles: candidates.map((c) => `@${c.handle}`),
+    },
+  });
+
+  if (candidates.length === 0) return;
+
+  await publishEvent({
+    kind: "tool.called",
+    agent: "influencer",
+    runId,
+    projectId,
+    tool: "scrape_profiles",
+    input: { count: candidates.length },
+  });
+
+  const onProgress = (p: ScrapeProgress) => {
+    const tokens =
+      p.status === "start"
+        ? `Scrapeando @${p.handle} (${p.platform})…\n`
+        : p.status === "ok"
+          ? `✓ @${p.handle}${p.message ? ` · ${p.message}` : ""}\n`
+          : `× @${p.handle}${p.message ? ` · ${p.message}` : ""}\n`;
+    void publishEvent({
+      kind: "agent.thinking",
+      agent: "influencer",
+      runId,
+      projectId,
+      tokens,
+    });
+  };
+
+  const scraped = await scrapeBatch(candidates, onProgress);
+
+  let persisted = 0;
+  for (const profile of scraped) {
+    const embedding = await embedProfile(profile);
+    if (!embedding) continue;
+    try {
+      await upsertInfluencer(profile, embedding);
+      persisted++;
+    } catch (err) {
+      console.error("[scrape] upsert failed for", profile.handle, err);
+    }
+  }
+
+  await publishEvent({
+    kind: "tool.result",
+    agent: "influencer",
+    runId,
+    projectId,
+    tool: "scrape_profiles",
+    output: {
+      requested: candidates.length,
+      scraped: scraped.length,
+      persisted,
+    },
+  });
 }
 
 // ============================================================

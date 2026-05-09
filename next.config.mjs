@@ -14,6 +14,10 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: "10mb",
     },
+    // Playwright se importa desde una API route para scraping live de
+    // influencers; debe quedar como dep externa para que Webpack no intente
+    // bundlear el binario de Chromium.
+    serverComponentsExternalPackages: ["playwright", "playwright-core"],
   },
 };
 
