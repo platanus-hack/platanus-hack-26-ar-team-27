@@ -54,9 +54,9 @@
 - [ ] 2.25 Sin login: el primer hit del root crea cookie `project_id` con UUID y redirige al dashboard
 
 ### T4 — Pipeline de imagen (mockeada por default; NVIDIA después)
-- [ ] 2.26 Wrapper único `generateImage()` en `lib/agents/creative/image-gen.ts` (ya scaffoldeado) — todo caller pasa por acá
-- [ ] 2.27 Flag `MOCK_IMAGE_GEN=true` por **default**: devuelve placeholders Unsplash de `lib/mocks/images.ts` sin llamar a ningún modelo externo
-- [ ] 2.28 Helpers de copy gen con GPT-4o-mini (3 frameworks: PAS / AIDA / curiosity)
+- [x] 2.26 Wrapper único `generateImage()` en `lib/agents/creative/image-gen.ts` (ya scaffoldeado) — todo caller pasa por acá
+- [x] 2.27 Flag `MOCK_IMAGE_GEN=true` por **default**: devuelve placeholders Unsplash de `lib/mocks/images.ts` sin llamar a ningún modelo externo
+- [x] 2.28 Helpers de copy gen con GPT-4o-mini (3 frameworks: PAS / AIDA / curiosity)
 - [ ] 2.28a (Post-MVP / cuando se decida) Integrar modelo NVIDIA gratis dentro de `generateImage()` — identificar modelo concreto (NIM, edify, SD via NGC) y wrapearlo
 
 ### T5 — DevOps + scaffolding launch mock + demo catalog
@@ -78,12 +78,12 @@
 - [ ] 3.7 Persistir output en `strategies`
 
 ### T4 — Creative Engine
-- [ ] 3.8 Generador de 3 prompts de imagen por SKU (lifestyle / contexto / comparativa) usando brief + SKU
-- [ ] 3.9 Pipeline: por cada SKU → 3 imágenes en paralelo en Replicate → emitir `artifact.created` por imagen
-- [ ] 3.10 Por cada imagen → 3 copys (PAS / AIDA / curiosity) → emitir `artifact.created` por copy
-- [ ] 3.11 Persistir cada output en `creatives` con `status='ready'` o `'failed'`
-- [ ] 3.12 Endpoint `POST /api/creatives/generate-batch` que toma `hero_skus` y dispara generación
-- [ ] 3.13 Manejo de SKU sin imagen: skip image-gen, copy-only con placeholder
+- [x] 3.8 Generador de 3 prompts de imagen por SKU (lifestyle / contexto / comparativa) usando brief + SKU
+- [x] 3.9 Pipeline: por cada SKU → 3 imágenes en paralelo en Replicate → emitir `artifact.created` por imagen
+- [x] 3.10 Por cada imagen → 3 copys (PAS / AIDA / curiosity) → emitir `artifact.created` por copy
+- [x] 3.11 Persistir cada output en `creatives` con `status='ready'` o `'failed'`
+- [x] 3.12 Endpoint `POST /api/creatives/generate-batch` que toma `hero_skus` y dispara generación
+- [x] 3.13 Manejo de SKU sin imagen: skip image-gen, copy-only con placeholder
 
 ### T2/T5 — Influencer Matching + DM Generator
 - [ ] 3.14 Calcular embedding del ICP (concat de campos relevantes) en runtime
