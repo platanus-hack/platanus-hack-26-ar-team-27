@@ -1,0 +1,54 @@
+# Tooling local (cada dev configura el suyo)
+.agent/
+.claude/
+.codex/
+.opencode/
+.playwright-mcp/
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+!.env.local.example
+
+# Supabase
+supabase/.branches/
+supabase/.temp/
+
+# Vercel
+.vercel/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# Cache
+.cache/
+.turbo/
+.eslintcache
