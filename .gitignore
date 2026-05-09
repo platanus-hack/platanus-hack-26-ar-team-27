@@ -4,6 +4,7 @@
 .codex/
 .opencode/
 .playwright-mcp/
+.mcp.json
 
 # Dependencies
 node_modules/
@@ -14,6 +15,7 @@ node_modules/
 out/
 build/
 dist/
+tsconfig.tsbuildinfo
 
 # Env / secrets
 .env
