@@ -69,13 +69,13 @@
 ## 3. Ola 2 — Agentes (depende de bus + DB ready)
 
 ### T2 — Strategy Agent
-- [ ] 3.1 Setup grafo LangGraph base con un nodo Strategy
-- [ ] 3.2 Tools: `get_products(project_id)`, `get_brand_brief(project_id)`
-- [ ] 3.3 System prompt de Strategy con campos del brief inyectados
-- [ ] 3.4 Streaming de tokens al bus vía Vercel AI SDK
-- [ ] 3.5 Output schema: `hero_skus, icp, detected_categories, reasoning` validado con zod
-- [ ] 3.6 Endpoint `POST /api/strategy/generate` que dispara el agente
-- [ ] 3.7 Persistir output en `strategies`
+- [x] 3.1 Setup grafo LangGraph base con un nodo Strategy — simplificado: pipeline lineal con 2 tool-calls determinísticos antes del LLM (no requiere LangGraph para 1 nodo, evita overhead)
+- [x] 3.2 Tools: `get_products(project_id)`, `get_brand_brief(project_id)` (lib/agents/strategy/tools.ts)
+- [x] 3.3 System prompt de Strategy con campos del brief inyectados
+- [x] 3.4 Streaming de tokens al bus vía Anthropic SDK (publishEvent agent.thinking por delta)
+- [x] 3.5 Output schema: `hero_skus, icp, detected_categories, reasoning` validado con StrategyOutputSchema
+- [x] 3.6 Endpoint `POST /api/strategy` que dispara el agente (path /strategy en lugar de /strategy/generate por consistencia con scaffold)
+- [x] 3.7 Persistir output en `strategies` + emit artifact.created por hero SKU + agent.completed
 
 ### T4 — Creative Engine
 - [x] 3.8 Generador de 3 prompts de imagen por SKU (lifestyle / contexto / comparativa) usando brief + SKU
