@@ -482,6 +482,41 @@ body {
   position: relative;
   overflow: hidden;
 }
+.agent-stream .status-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 18px;
+}
+.agent-stream .reasoning-toggle {
+  margin-top: 8px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--fg-3);
+  cursor: pointer;
+  letter-spacing: 0.02em;
+}
+.agent-stream .reasoning-toggle:hover {
+  color: var(--fg-1);
+}
+.agent-stream .reasoning-raw {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border: 1px dashed var(--line-soft);
+  border-radius: 8px;
+  background: var(--bg-2);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--fg-2);
+  line-height: 1.5;
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 .agent-stream .tok-faded {
   color: var(--fg-2);
 }

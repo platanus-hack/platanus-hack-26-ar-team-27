@@ -371,6 +371,7 @@ export function DashboardShell({ projectId }: DashboardShellProps) {
               thinkingByAgent={stream.thinkingByAgent}
               tools={stream.tools}
               artifacts={stream.artifacts}
+              events={stream.events}
             />
 
             {/* Console */}

@@ -8,6 +8,7 @@
  */
 "use client";
 
+import { useState } from "react";
 import type { AgentEvent, AgentName } from "@/lib/events/types";
 import {
   IconStrategy,
@@ -32,6 +33,7 @@ type AgentStageProps = {
   thinkingByAgent: Record<string, string>;
   tools: Array<Extract<AgentEvent, { kind: "tool.called" }>>;
   artifacts: StreamArtifact[];
+  events: AgentEvent[];
 };
 
 export function AgentStage({
@@ -40,6 +42,7 @@ export function AgentStage({
   thinkingByAgent,
   tools,
   artifacts,
+  events,
 }: AgentStageProps) {
   return (
     <div className="agents-grid">
@@ -52,6 +55,7 @@ export function AgentStage({
           thinking={thinkingByAgent[agent] ?? ""}
           tools={tools.filter((t) => t.agent === agent)}
           artifacts={artifacts.filter((a) => a.agent === agent)}
+          events={events.filter((e) => e.agent === agent)}
         />
       ))}
     </div>
@@ -65,9 +69,11 @@ type AgentCardProps = {
   thinking: string;
   tools: Array<Extract<AgentEvent, { kind: "tool.called" }>>;
   artifacts: StreamArtifact[];
+  events: AgentEvent[];
 };
 
-function AgentCard({ agent, status, thinking, tools, artifacts }: AgentCardProps) {
+function AgentCard({ agent, status, thinking, tools, artifacts, events }: AgentCardProps) {
+  const [showRaw, setShowRaw] = useState(false);
   const Icon =
     agent === "strategy"
       ? IconStrategy
@@ -111,14 +117,25 @@ function AgentCard({ agent, status, thinking, tools, artifacts }: AgentCardProps
       </div>
 
       <div className="agent-stream">
+        <div className="status-line">
+          <span className="tok-faded">{deriveStatusLine(agent, status, events)}</span>
+          {status === "active" ? <span className="caret" /> : null}
+        </div>
         {thinking ? (
           <>
-            <span className="tok-faded">{thinking}</span>
-            {status === "active" ? <span className="caret" /> : null}
+            <button
+              type="button"
+              className="reasoning-toggle"
+              onClick={() => setShowRaw((v) => !v)}
+              aria-expanded={showRaw}
+            >
+              {showRaw ? "▾ Ocultar razonamiento" : "▸ Ver razonamiento"}
+            </button>
+            {showRaw ? (
+              <pre className="reasoning-raw">{thinking}</pre>
+            ) : null}
           </>
-        ) : (
-          <span className="tok-faded">{idleHint(agent)}</span>
-        )}
+        ) : null}
       </div>
 
       <div className="agent-tools">
@@ -174,6 +191,74 @@ function defaultTools(agent: AgentName): string[] {
   if (agent === "creative") return ["generate_image", "write_copy", "compose_pair"];
   if (agent === "influencer") return ["cosine_match", "draft_dm", "verify_no_halluc"];
   return ["create_campaign", "create_ad_set", "upload_creatives"];
+}
+
+const TOOL_LABEL_IN: Record<string, string> = {
+  get_brand_brief: "Leyendo brief de marca…",
+  get_products: "Leyendo catálogo…",
+  rank_skus: "Priorizando hero SKUs…",
+  generate_image: "Generando imagen…",
+  write_copy: "Redactando copy…",
+  compose_pair: "Componiendo creativo…",
+  cosine_match: "Cruzando ICP con creators…",
+  draft_dm: "Redactando DMs…",
+  verify_no_halluc: "Verificando DMs sin alucinar…",
+  create_campaign: "Creando campaña…",
+  create_ad_set: "Creando ad set…",
+  upload_creatives: "Subiendo creativos…",
+};
+
+const TOOL_LABEL_OUT: Record<string, string> = {
+  get_brand_brief: "Brief leído",
+  get_products: "Catálogo cargado",
+  rank_skus: "Hero SKUs priorizados",
+  generate_image: "Imagen generada",
+  write_copy: "Copy listo",
+  compose_pair: "Creativo armado",
+  cosine_match: "Creators encontrados",
+  draft_dm: "DMs redactadas",
+  verify_no_halluc: "DMs verificadas",
+  create_campaign: "Campaña creada",
+  create_ad_set: "Ad set creado",
+  upload_creatives: "Creativos subidos",
+};
+
+function describeArtifact(type: string, ref: string): string {
+  if (type === "sku") return `Hero SKU ${ref} priorizado`;
+  if (type === "creative") return `Creativo ${ref} listo`;
+  if (type === "match") return `Match con @${ref.replace(/^@/, "")}`;
+  if (type === "dm") return `DM lista para ${ref}`;
+  if (type === "campaign") return `Campaña ${ref} configurada`;
+  return `${type} · ${ref}`;
+}
+
+function deriveStatusLine(
+  agent: AgentName,
+  status: AgentStatus,
+  events: AgentEvent[],
+): string {
+  if (events.length === 0) {
+    if (status === "active") return "Iniciando…";
+    return idleHint(agent);
+  }
+
+  // Buscar el último evento que no sea agent.thinking (el thinking es el JSON crudo).
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i];
+    if (!e || e.kind === "agent.thinking") continue;
+    if (e.kind === "agent.started") return "Iniciando…";
+    if (e.kind === "tool.called")
+      return TOOL_LABEL_IN[e.tool] ?? `Ejecutando ${e.tool}…`;
+    if (e.kind === "tool.result")
+      return TOOL_LABEL_OUT[e.tool] ?? `${e.tool} ok`;
+    if (e.kind === "artifact.created") return describeArtifact(e.type, e.ref);
+    if (e.kind === "agent.completed") return e.summary;
+    if (e.kind === "agent.failed") return `Error: ${e.error}`;
+  }
+
+  // Solo hay thinking events — el modelo está pensando pero no emitió tools/artifacts aún.
+  if (status === "active") return "Razonando…";
+  return idleHint(agent);
 }
 
 function idleHint(agent: AgentName): string {
