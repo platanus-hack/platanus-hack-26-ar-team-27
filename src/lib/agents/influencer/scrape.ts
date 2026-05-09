@@ -1,29 +1,19 @@
 /**
- * Scraping live de influencers via Playwright (Chromium real).
+ * Scraping live de influencers — corre desde el Influencer agent durante el
+ * flow del usuario (después de Strategy).
  *
- * Lo dispara el Influencer Matching Agent durante el flow del usuario: lee
- * `scripts/seed/seed-handles.csv`, filtra por las `detected_categories` que
- * vino del Strategy Agent, y scrapea N perfiles en vivo. Cada perfil exitoso
- * se persiste en `influencers` con un embedding fresco (UPSERT por handle/
- * platform).
+ * Path por defecto: `fetch()` directo al HTML público de IG/TikTok. Anda en
+ * Vercel serverless (no necesita Chromium). Captura bio + followers +
+ * display_name del meta description público. Pierde captions de posts
+ * individuales (que IG bloquea sin login igual el 50% del tiempo).
  *
- * Caveats:
- *  - Requiere Playwright + Chromium instalados localmente (no funciona en
- *    serverless/Vercel).
- *  - IG bloquea agressivamente sin login: ~30-50% de los handles fallan.
- *  - Por defecto headless=true. Para ver el browser, exportar
- *    SCRAPE_HEADLESS=false antes de levantar el dev server.
+ * Override local: `SCRAPE_USE_PLAYWRIGHT=true` carga Playwright dinámicamente
+ * y usa Chromium real. Más completo pero NO funciona en serverless.
  */
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import OpenAI from "openai";
-import {
-  chromium,
-  type Browser,
-  type BrowserContext,
-  type Page,
-} from "playwright";
 import { getSql } from "@/lib/db/pg";
 
 export type SeedHandle = {
@@ -45,8 +35,41 @@ export type ScrapeResult = {
   audience_demo: { age_range: string; gender: string; country: string };
 };
 
+export type ScrapeProgress = {
+  handle: string;
+  platform: string;
+  status: "start" | "ok" | "fail";
+  message?: string;
+};
+
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
+
+// ============================================================
+// Public API
+// ============================================================
+
+export async function scrapeBatch(
+  handles: SeedHandle[],
+  onProgress: (p: ScrapeProgress) => void,
+): Promise<ScrapeResult[]> {
+  if (handles.length === 0) return [];
+
+  if (process.env.SCRAPE_USE_PLAYWRIGHT === "true") {
+    try {
+      const { scrapeBatchPlaywright } = await import("./scrape-playwright");
+      return await scrapeBatchPlaywright(handles, onProgress);
+    } catch (err) {
+      console.error(
+        "[scrape] Playwright path failed, falling back to fetch.",
+        err,
+      );
+      // Continúa al path fetch.
+    }
+  }
+
+  return scrapeBatchFetch(handles, onProgress);
+}
 
 // ============================================================
 // Candidate selection
@@ -69,10 +92,8 @@ export function pickCandidates(
   const filtered = all.filter((h) =>
     detectedCategories.includes(h.category),
   );
-  // Si no hay match exacto de categoría, usá el pool completo.
   const pool = filtered.length > 0 ? filtered : all;
 
-  // Shuffle determinístico-ish (random pero acotado) y elegí limit.
   const shuffled = [...pool].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, limit);
 }
@@ -95,236 +116,182 @@ function parseHandlesCsv(raw: string): SeedHandle[] {
 }
 
 // ============================================================
-// Scrape (Playwright)
+// Fetch-based scraper (default — funciona en Vercel)
 // ============================================================
 
-export type ScrapeProgress = {
-  handle: string;
-  platform: string;
-  status: "start" | "ok" | "fail";
-  message?: string;
-};
-
-export async function scrapeBatch(
+async function scrapeBatchFetch(
   handles: SeedHandle[],
   onProgress: (p: ScrapeProgress) => void,
 ): Promise<ScrapeResult[]> {
-  if (handles.length === 0) return [];
-
-  const headless = process.env.SCRAPE_HEADLESS !== "false";
-  let browser: Browser | null = null;
-  let ctx: BrowserContext | null = null;
-
-  try {
-    browser = await chromium.launch({ headless });
-    ctx = await browser.newContext({
-      userAgent: UA,
-      viewport: { width: 1280, height: 800 },
-      locale: "es-AR",
-    });
-
-    const out: ScrapeResult[] = [];
-    for (const h of handles) {
-      onProgress({ handle: h.handle, platform: h.platform, status: "start" });
-      try {
-        const profile = await scrapeOne(ctx, h);
-        if (profile) {
-          out.push(profile);
-          onProgress({
-            handle: h.handle,
-            platform: profile.platform,
-            status: "ok",
-            message: `${profile.followers_count} followers`,
-          });
-        } else {
-          onProgress({
-            handle: h.handle,
-            platform: h.platform,
-            status: "fail",
-            message: "sin datos",
-          });
-        }
-      } catch (err) {
-        console.error(`[scrape] ✗ ${h.handle}`, err);
+  const out: ScrapeResult[] = [];
+  for (const h of handles) {
+    onProgress({ handle: h.handle, platform: h.platform, status: "start" });
+    try {
+      const profile = await scrapeOneFetch(h);
+      if (profile) {
+        out.push(profile);
+        onProgress({
+          handle: h.handle,
+          platform: profile.platform,
+          status: "ok",
+          message: `${formatFollowers(profile.followers_count)} followers`,
+        });
+      } else {
         onProgress({
           handle: h.handle,
           platform: h.platform,
           status: "fail",
-          message: (err as Error).message?.slice(0, 80),
+          message: "bloqueado o sin datos",
         });
       }
-      // Delay anti rate-limit: 2-4s entre handles.
-      await sleep(2000 + Math.random() * 2000);
+    } catch (err) {
+      console.error(`[scrape] ✗ ${h.handle}`, err);
+      onProgress({
+        handle: h.handle,
+        platform: h.platform,
+        status: "fail",
+        message: (err as Error).message?.slice(0, 80) ?? "error",
+      });
     }
-    return out;
-  } finally {
-    try {
-      await ctx?.close();
-    } catch {}
-    try {
-      await browser?.close();
-    } catch {}
+    // Mini delay anti-rate-limit.
+    await sleep(800 + Math.random() * 600);
   }
+  return out;
 }
 
-async function scrapeOne(
-  ctx: BrowserContext,
-  h: SeedHandle,
-): Promise<ScrapeResult | null> {
-  const page = await ctx.newPage();
+async function scrapeOneFetch(h: SeedHandle): Promise<ScrapeResult | null> {
+  if (h.platform === "ig") {
+    const ig = await scrapeIgFetch(h);
+    if (ig) return ig;
+    return scrapeTtFetch(h);
+  }
+  if (h.platform === "tt") {
+    return scrapeTtFetch(h);
+  }
+  return null;
+}
+
+async function fetchHtml(url: string): Promise<string | null> {
   try {
-    if (h.platform === "ig") {
-      const result = await scrapeInstagram(page, h);
-      if (result) return result;
-    }
-    return await scrapeTikTok(page, h);
-  } finally {
-    await page.close();
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": UA,
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "es-AR,es;q=0.9,en;q=0.8",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Cache-Control": "no-cache",
+      },
+      redirect: "follow",
+    });
+    if (!res.ok) return null;
+    return await res.text();
+  } catch {
+    return null;
   }
 }
 
-async function scrapeInstagram(
-  page: Page,
-  h: SeedHandle,
-): Promise<ScrapeResult | null> {
-  const url = `https://www.instagram.com/${h.handle}/`;
-  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
+async function scrapeIgFetch(h: SeedHandle): Promise<ScrapeResult | null> {
+  const html = await fetchHtml(`https://www.instagram.com/${h.handle}/`);
+  if (!html) return null;
 
-  const metaDesc = await page
-    .locator('meta[name="description"]')
-    .getAttribute("content")
-    .catch(() => null);
-
-  if (!metaDesc || /Page Not Found/i.test(metaDesc)) return null;
+  const metaDesc = matchMeta(html, "name", "description");
+  if (!metaDesc) return null;
+  if (/Page Not Found/i.test(metaDesc)) return null;
   if (!/followers/i.test(metaDesc)) return null;
 
   const followersMatch = metaDesc.match(/([\d,.KMm]+)\s*Followers/i);
   const displayMatch = metaDesc.match(/from\s+(.+?)\s+\(/);
 
   const followers = parseFollowerCount(followersMatch?.[1] ?? "0");
-  const display_name = (displayMatch?.[1]?.trim() ?? h.handle).slice(0, 80);
+  const display_name = decodeEntities(
+    (displayMatch?.[1]?.trim() ?? h.handle).slice(0, 80),
+  );
 
-  const ogBio = (await getOgBio(page)) ?? "";
-  const captions = await collectCaptions(page, 3).catch(() => [] as string[]);
-  const summary = await summarize(captions, ogBio, h.category);
+  const ogDesc = matchMeta(html, "property", "og:description") ?? "";
+  const ogImage = matchMeta(html, "property", "og:image");
+  const bio = decodeEntities(ogDesc).slice(0, 280);
 
   return {
     handle: h.handle,
     platform: "ig",
     display_name,
-    avatar_url: null,
+    avatar_url: ogImage ?? null,
     followers_count: followers,
     engagement_rate: 0.03 + Math.random() * 0.04,
-    bio: ogBio.slice(0, 280),
-    recent_post_summary: summary.slice(0, 1000),
+    bio,
+    // Sin captions en fetch puro: usamos el bio como proxy del summary.
+    recent_post_summary: bio || `Contenido reciente de ${h.category}.`,
     categories: [h.category],
     audience_demo: { age_range: "25-34", gender: "female", country: "AR" },
   };
 }
 
-async function scrapeTikTok(
-  page: Page,
-  h: SeedHandle,
-): Promise<ScrapeResult | null> {
-  const url = `https://www.tiktok.com/@${h.handle}`;
-  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
-  const metaDesc = await page
-    .locator('meta[name="description"]')
-    .getAttribute("content")
-    .catch(() => null);
+async function scrapeTtFetch(h: SeedHandle): Promise<ScrapeResult | null> {
+  const html = await fetchHtml(`https://www.tiktok.com/@${h.handle}`);
+  if (!html) return null;
+
+  const metaDesc = matchMeta(html, "name", "description");
   if (!metaDesc) return null;
 
   const followersMatch = metaDesc.match(/([\d,.KMm]+)\s*Followers/i);
   const followers = parseFollowerCount(followersMatch?.[1] ?? "0");
-  const bio = (metaDesc.split(" - ")[1] ?? "").slice(0, 280);
+  const bio = decodeEntities((metaDesc.split(" - ")[1] ?? "").slice(0, 280));
 
   if (!followers && !bio) return null;
+
+  const ogImage = matchMeta(html, "property", "og:image");
 
   return {
     handle: h.handle,
     platform: "tt",
     display_name: h.handle,
-    avatar_url: null,
+    avatar_url: ogImage ?? null,
     followers_count: followers || 10_000,
     engagement_rate: 0.03 + Math.random() * 0.04,
     bio,
-    recent_post_summary: bio,
+    recent_post_summary: bio || `Contenido reciente de ${h.category}.`,
     categories: [h.category],
     audience_demo: { age_range: "18-29", gender: "all", country: "AR" },
   };
 }
 
-async function getOgBio(page: Page): Promise<string | null> {
-  return page
-    .locator('meta[property="og:description"]')
-    .getAttribute("content")
-    .catch(() => null);
+// ============================================================
+// HTML parsing helpers
+// ============================================================
+
+function matchMeta(
+  html: string,
+  attr: "name" | "property",
+  value: string,
+): string | null {
+  const escaped = escapeRe(value);
+  // <meta name="..." content="...">
+  const re1 = new RegExp(
+    `<meta\\s+${attr}=["']${escaped}["']\\s+content=["']([^"']+)["']`,
+    "i",
+  );
+  // <meta content="..." name="...">
+  const re2 = new RegExp(
+    `<meta\\s+content=["']([^"']+)["']\\s+${attr}=["']${escaped}["']`,
+    "i",
+  );
+  return html.match(re1)?.[1] ?? html.match(re2)?.[1] ?? null;
 }
 
-async function collectCaptions(page: Page, limit: number): Promise<string[]> {
-  const captions: string[] = [];
-  const links = await page
-    .locator('a[href*="/p/"]')
-    .evaluateAll((els) =>
-      (els as HTMLAnchorElement[])
-        .map((e) => e.getAttribute("href"))
-        .filter((h): h is string => !!h)
-        .slice(0, 5),
-    )
-    .catch(() => [] as string[]);
-
-  for (const href of links.slice(0, limit)) {
-    try {
-      await page.goto(`https://www.instagram.com${href}`, {
-        waitUntil: "domcontentloaded",
-        timeout: 20_000,
-      });
-      const og = await page
-        .locator('meta[property="og:description"]')
-        .getAttribute("content")
-        .catch(() => null);
-      if (og) captions.push(og);
-      await sleep(1500 + Math.random() * 1500);
-    } catch {
-      // ignore
-    }
-  }
-  return captions;
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-async function summarize(
-  captions: string[],
-  fallbackBio: string,
-  category: string,
-): Promise<string> {
-  if (!captions.length) {
-    return (
-      fallbackBio || `Contenido reciente de ${category} (resumen no disponible).`
-    );
-  }
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return captions.join(" • ").slice(0, 600);
-  const openai = new OpenAI({ apiKey });
-  try {
-    const resp = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      temperature: 0.3,
-      messages: [
-        {
-          role: "system",
-          content:
-            "Resumí los captions del creador en 2-3 oraciones (español neutro), capturando productos mencionados y temas. Sin markdown.",
-        },
-        {
-          role: "user",
-          content: `Categoría: ${category}\nCaptions:\n${captions.join("\n---\n")}`,
-        },
-      ],
-    });
-    return resp.choices[0]?.message?.content?.trim() ?? captions.join(" • ");
-  } catch {
-    return captions.join(" • ").slice(0, 600);
-  }
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&nbsp;/g, " ");
 }
 
 function parseFollowerCount(s: string): number {
@@ -335,6 +302,12 @@ function parseFollowerCount(s: string): number {
     return Math.round(Number(cleaned.slice(0, -1)) * 1_000_000);
   const n = Number(cleaned);
   return Number.isFinite(n) ? Math.round(n) : 0;
+}
+
+function formatFollowers(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${Math.round(n / 1_000)}k`;
+  return `${n}`;
 }
 
 function sleep(ms: number): Promise<void> {
