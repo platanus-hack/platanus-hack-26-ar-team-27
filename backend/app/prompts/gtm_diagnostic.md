@@ -15,6 +15,11 @@ matching the `GtmDiagnostic` schema:
 - notes (optional brief explanation)
 
 Rules:
+- ALWAYS respond in Spanish. All free-text fields
+  (`business_context_summary`, `icp_description`, `notes`, and any other
+  human-readable string) MUST be written in Spanish, regardless of the
+  input language. Keep `company_name` and `suggested_domain_names`
+  verbatim (no translation).
 - The input payload may include `attachment_context`, which contains text
   extracted from uploaded PDF, MD, or TXT files. Use it as supplemental
   context only.
