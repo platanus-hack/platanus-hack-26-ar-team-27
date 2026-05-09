@@ -3,10 +3,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+from dataclasses import dataclass
+from json import JSONDecodeError
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from pydantic import BaseModel, ValidationError
+from starlette.datastructures import UploadFile as StarletteUploadFile
 from starlette.responses import StreamingResponse
 
 from app.api.deps import Session, get_db
@@ -18,6 +22,11 @@ from app.schemas.gtm import (
     CompanyConfirmRequest,
     CompanyOut,
     SourceFile,
+)
+from app.services.attachment_service import (
+    AttachmentContextFile,
+    AttachmentValidationError,
+    parse_upload_files,
 )
 from app.services.diagnostic_service import (
     CompanyNotFound,
@@ -38,22 +47,117 @@ class StreamTokenResponse(BaseModel):
     stream_url: str
 
 
+@dataclass(slots=True)
+class ParsedAnalyzeRequest:
+    payload: CompanyAnalyzeRequest
+    attachment_context: list[AttachmentContextFile]
+
+
+async def _parse_analyze_request(request: Request) -> ParsedAnalyzeRequest:
+    """Parse multipart/form-data or application/json into a ParsedAnalyzeRequest.
+
+    - multipart/form-data: reads raw_input (text field) + files (repeated file fields).
+    - application/json: reads raw_input and optional files metadata list.
+    - Any other Content-Type returns HTTP 415.
+
+    raw_input is always stripped before validation to avoid false "empty" errors.
+    """
+    content_type = request.headers.get("content-type", "")
+    ct_base = content_type.split(";", 1)[0].strip().lower()
+
+    # Both multipart and urlencoded are parsed by Starlette's request.form()
+    if ct_base in ("multipart/form-data", "application/x-www-form-urlencoded"):
+        form = await request.form()
+        raw_input_value = form.get("raw_input")
+        raw_input_str = (raw_input_value if isinstance(raw_input_value, str) else "").strip()
+
+        upload_files = [
+            item
+            for item in form.getlist("files")
+            if isinstance(item, StarletteUploadFile) and item.filename
+        ]
+        try:
+            parsed_attachments = await parse_upload_files(upload_files)
+            payload = CompanyAnalyzeRequest(
+                raw_input=raw_input_str,
+                files=parsed_attachments.files_metadata,
+            )
+        except AttachmentValidationError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        except ValidationError as exc:
+            raise RequestValidationError(exc.errors()) from exc
+        return ParsedAnalyzeRequest(
+            payload=payload,
+            attachment_context=parsed_attachments.attachment_context,
+        )
+
+    if ct_base in ("application/json", ""):
+        try:
+            body = await request.json()
+        except (JSONDecodeError, Exception) as exc:
+            raise HTTPException(status_code=422, detail="Invalid JSON body.") from exc
+
+        if not isinstance(body, dict):
+            raise HTTPException(
+                status_code=422,
+                detail="JSON body must be an object with at least 'raw_input'.",
+            )
+
+        # Strip raw_input coming from JSON too
+        if "raw_input" in body and isinstance(body["raw_input"], str):
+            body["raw_input"] = body["raw_input"].strip()
+
+        try:
+            payload = CompanyAnalyzeRequest.model_validate(body)
+        except ValidationError as exc:
+            raise RequestValidationError(exc.errors()) from exc
+
+        return ParsedAnalyzeRequest(payload=payload, attachment_context=[])
+
+    raise HTTPException(
+        status_code=415,
+        detail=(
+            "Unsupported Content-Type. Use 'multipart/form-data' (with files) "
+            "or 'application/json' (without files)."
+        ),
+    )
+
+
 @router.post("/analyze", response_model=CompanyOut)
-def analyze(payload: CompanyAnalyzeRequest, db: Session = Depends(get_db)) -> CompanyOut:
-    company = analyze_company(db, payload)
+async def analyze(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> CompanyOut:
+    parsed = await _parse_analyze_request(request)
+    company = analyze_company(
+        db,
+        parsed.payload,
+        attachment_context=parsed.attachment_context,
+    )
     return CompanyOut.model_validate(company)
 
 
 @router.post("/analyze/stream-token", response_model=StreamTokenResponse)
-def issue_analyze_token(payload: CompanyAnalyzeRequest) -> StreamTokenResponse:
+async def issue_analyze_token(
+    request: Request,
+) -> StreamTokenResponse:
     """Mint a single-use token to be passed to GET /analyze/stream.
 
-    EventSource cannot send custom headers; this two-step flow keeps the
-    streaming endpoint authenticated while the browser uses the token in
-    the query string.
+    Accepts multipart/form-data (texto + archivos adjuntos) or application/json
+    (solo texto). EventSource cannot send custom headers; this two-step flow
+    keeps the streaming endpoint authenticated while the browser uses the token
+    in the query string.
     """
+    parsed = await _parse_analyze_request(request)
     token, ttl = issue_stream_token(
-        {"raw_input": payload.raw_input, "files": [f.model_dump() for f in payload.files]}
+        {
+            "raw_input": parsed.payload.raw_input,
+            "files": [f.model_dump(mode="json") for f in parsed.payload.files],
+            "attachment_context": [
+                attachment.model_dump(mode="json")
+                for attachment in parsed.attachment_context
+            ],
+        }
     )
     return StreamTokenResponse(
         token=token,
@@ -78,6 +182,10 @@ async def analyze_stream(token: str) -> StreamingResponse:
         raw_input=payload_data.get("raw_input", ""),
         files=[SourceFile(**f) for f in payload_data.get("files", [])],
     )
+    attachment_context = [
+        AttachmentContextFile(**f)
+        for f in payload_data.get("attachment_context", [])
+    ]
     use_anthropic = bool(settings.anthropic_api_key)
 
     async def event_generator():
@@ -98,7 +206,10 @@ async def analyze_stream(token: str) -> StreamingResponse:
                 factory = get_session_factory()
                 with factory() as session:
                     company = analyze_company(
-                        session, payload, force_heuristic=not use_anthropic
+                        session,
+                        payload,
+                        attachment_context=attachment_context,
+                        force_heuristic=not use_anthropic,
                     )
                     session.commit()
                     return CompanyOut.model_validate(company).model_dump(mode="json")
