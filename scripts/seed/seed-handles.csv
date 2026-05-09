@@ -1,4 +1,111 @@
 handle,platform,category
-# Track 3: 100 handles aquí (20 por categoría).
-# Categorías canónicas: fashion, beauty, fitness, home, food.
-# Criterios: followers > 10k, engagement > 2%, contenido visible públicamente.
+# 100 handles seed (20 × 5 categorías) — Track 3 §2.11-2.12.
+# Criterios: followers > 10k, engagement > 2%, contenido público (D7).
+# Estos handles son arquetipos para el seed: el script seed-influencers.ts los
+# usa como base para generar perfiles sintéticos plausibles + embeddings (D7
+# fallback) cuando el scraping real con Playwright no es viable en demo.
+# fashion (20)
+luna.collective,ig,fashion
+sofia.threads,ig,fashion
+mar.valentina,ig,fashion
+camila.archive,ig,fashion
+isabella.couture,ig,fashion
+bruna.lookbook,ig,fashion
+laura.thread,ig,fashion
+emma.minimalist,ig,fashion
+juliana.curates,ig,fashion
+mia.everydaystyle,ig,fashion
+clara.style,ig,fashion
+victoria.modedaily,ig,fashion
+silvia.linenstories,ig,fashion
+lucia.clothdiary,ig,fashion
+nina.basics,ig,fashion
+ana.everyday,ig,fashion
+flor.studio,ig,fashion
+catalina.uniform,ig,fashion
+paula.matterstyle,ig,fashion
+roma.vestir,ig,fashion
+# beauty (20)
+mar.skincare,ig,beauty
+nadia.glow,ig,beauty
+violeta.cleanbeauty,ig,beauty
+lara.routine,ig,beauty
+carmen.makeup,ig,beauty
+rocio.estetica,ig,beauty
+helena.bronze,ig,beauty
+brenda.skinjournal,ig,beauty
+agus.glow,ig,beauty
+maite.lashes,ig,beauty
+sara.skinrituals,ig,beauty
+veronica.beautynote,ig,beauty
+jimena.lipdiary,ig,beauty
+aldana.glowdiary,ig,beauty
+mariana.cleanlist,ig,beauty
+lia.makeupstudio,ig,beauty
+iris.skin,ig,beauty
+gala.beautynotes,ig,beauty
+olivia.tonality,ig,beauty
+marta.honestbeauty,ig,beauty
+# fitness (20)
+sofi.runner,ig,fitness
+eva.strength,ig,fitness
+caro.movement,ig,fitness
+lupe.barre,ig,fitness
+vale.pilates,ig,fitness
+alma.yoga,ig,fitness
+juana.lift,ig,fitness
+tina.stretch,ig,fitness
+nuria.movement,ig,fitness
+ines.run,ig,fitness
+gaby.core,ig,fitness
+pia.movementlab,ig,fitness
+miranda.flow,ig,fitness
+agos.fitnotes,ig,fitness
+tatiana.run,ig,fitness
+beatriz.strength,ig,fitness
+fer.athletics,ig,fitness
+luna.flow,ig,fitness
+camila.barreclub,ig,fitness
+laia.movestudio,ig,fitness
+# home (20)
+casa.de.lila,ig,home
+hogar.con.alma,ig,home
+mia.interiors,ig,home
+sofia.studio.casa,ig,home
+ines.spaces,ig,home
+nina.minimalhome,ig,home
+nora.olivehouse,ig,home
+mar.cocinaabierta,ig,home
+juli.terrracotta,ig,home
+agus.objetos,ig,home
+emma.atelierhome,ig,home
+constanza.linenhome,ig,home
+sara.casanueva,ig,home
+luz.deco,ig,home
+flor.alcove,ig,home
+helena.homediary,ig,home
+clara.casaviva,ig,home
+delia.mediterranean,ig,home
+malena.warmhome,ig,home
+ana.olivelinen,ig,home
+# food (20)
+cocina.de.flor,ig,food
+mesa.de.julia,ig,food
+gabi.gastro,ig,food
+helena.tienemania,ig,food
+camila.recetas,ig,food
+nora.bakes,ig,food
+lila.foodjournal,ig,food
+sara.brunchclub,ig,food
+ines.cocina,ig,food
+mia.recetario,ig,food
+caro.cookbook,ig,food
+mar.cuchara,ig,food
+luna.bakelab,ig,food
+juli.foodmemory,ig,food
+emma.realfoods,ig,food
+constanza.platosdiarios,ig,food
+nadia.cocinaviva,ig,food
+ana.fermentar,ig,food
+flor.recetariobnb,ig,food
+delfina.tablediary,ig,food

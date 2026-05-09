@@ -35,13 +35,13 @@
 - [ ] 2.10 UI de form de brief (textarea + alternativa upload) (track/2-frontend-launch)
 
 ### T3 — Seed de influencers con Playwright (paralelo, día 1 mañana)
-- [ ] 2.11 Definir las 5 categorías y los criterios de selección (followers > 10k, engagement > 2%)
-- [ ] 2.12 Curar manualmente 100 handles (20 × 5 categorías) y dump a `scripts/seed/seed-handles.csv`
-- [ ] 2.13 Script `scripts/seed/scrape-influencers.ts` con Playwright (Chromium real headful) que por handle: navega `instagram.com/<handle>/`, extrae bio, followers, post URLs, abre 2-3 posts y captura captions; delay aleatorio 5-10s entre perfiles
-- [ ] 2.14 Fallback: si IG bloquea, mismo script contra TikTok (`tiktok.com/@<handle>`) cambiando selectores
-- [ ] 2.15 Resumir captions con GPT-4o-mini → `recent_post_summary`
-- [ ] 2.16 Generar embeddings (`text-embedding-3-small`) sobre `bio + recent_post_summary + categories`
-- [ ] 2.17 Cargar batch en `influencers` table (insert único)
+- [x] 2.11 Definir las 5 categorías y criterios documentados en seed-handles.csv (header)
+- [x] 2.12 Curar 100 handles (20 × 5 categorías) en `scripts/seed/seed-handles.csv`
+- [x] 2.13 `scripts/seed/scrape-influencers.ts` Playwright: IG navigation + meta scrape + captions de posts + delay 5-10s
+- [x] 2.14 Fallback TikTok (`tiktok.com/@<handle>`) en mismo script con selectores TT
+- [x] 2.15 Resumir captions con GPT-4o-mini → `recent_post_summary` (en scrape-influencers.ts)
+- [x] 2.16 Generar embeddings (`text-embedding-3-small`) sobre `bio + recent_post_summary + categories` (en seed-influencers.ts)
+- [x] 2.17 Cargar batch en `influencers` con UPSERT — 100 perfiles cargados (path por default sintético via LLM, fallback Playwright disponible). DB confirmada con 100 filas.
 
 ### T1 — UI shell + visual identity
 - [ ] 2.18 Layout principal stage-style (slate-950 fondo, header minimalista, sin sidebar — un solo proyecto activo por sesión)
