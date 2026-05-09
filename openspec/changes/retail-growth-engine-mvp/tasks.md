@@ -21,11 +21,11 @@
 ## 2. Ola 1 — Foundations paralelas
 
 ### T2 — Agent event bus (CRÍTICO, primero del día 1)
-- [ ] 2.1 Crear tabla `agent_events` y trigger de `pg_notify` en migration
-- [ ] 2.2 Implementar publisher `lib/events/publish.ts` (insert + notify)
-- [ ] 2.3 Implementar endpoint `GET /api/stream/:projectId` con SSE + LISTEN
-- [ ] 2.4 Implementar replay de eventos previos por `runId` y `last_event_id`
-- [ ] 2.5 Smoke test: publicar evento desde script y recibirlo en cliente curl
+- [x] 2.1 Crear tabla `agent_events` y trigger de `pg_notify` en migration
+- [x] 2.2 Implementar publisher `lib/events/publish.ts` (insert + notify)
+- [x] 2.3 Implementar endpoint `GET /api/stream/:projectId` con SSE + LISTEN
+- [x] 2.4 Implementar replay de eventos previos por `runId` y `last_event_id`
+- [x] 2.5 Smoke test: publicar evento desde script y recibirlo en cliente curl
 
 ### T3 — Catalog + brand brief
 - [ ] 2.6 Implementar `POST /api/catalog/upload` con parser CSV tolerante (papaparse)

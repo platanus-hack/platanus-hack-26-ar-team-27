@@ -16,10 +16,20 @@
 import { getSql } from "@/lib/db/pg";
 import { makeEvent, type AgentEvent } from "@/lib/events/types";
 
+/**
+ * Distributive Omit: aplica Omit a cada miembro del union por separado para
+ * preservar la discriminación por `kind`. Sin esto, los callers pierden narrowing.
+ */
+type AgentEventInput = AgentEvent extends infer E
+  ? E extends AgentEvent
+    ? Omit<E, "ts">
+    : never
+  : never;
+
 export async function publishEvent(
-  event: Omit<AgentEvent, "ts">,
+  event: AgentEventInput,
 ): Promise<void> {
-  const full = makeEvent(event);
+  const full = makeEvent(event as Omit<AgentEvent, "ts">);
   const sql = getSql();
   try {
     await sql`
