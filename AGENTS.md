@@ -33,7 +33,7 @@ Las 3 ramas ya están creadas en remoto. **Para reclamar una**, abrís este arch
 |---|---|---|---|---|---|
 | 1 | `track/1-agents-data` | T2 + T3 (event bus, agents, catalog, brief, scraping seed) | Compu 1 | 2026-05-09T08:29:29Z | claimed |
 | 2 | `track/2-frontend-launch` | T1 + T5 (UI completa, agent stage, launch mock, devops, demo polish) | UNCLAIMED | — | open |
-| 3 | `track/3-creative` | T4 (Creative Engine: image-gen wrapper + copy gen) | UNCLAIMED | — | open |
+| 3 | `track/3-creative` | T4 (Creative Engine: image-gen wrapper + copy gen) | Compu 3 | 2026-05-09T08:35:00Z | claimed |
 
 ### Procedimiento de claim (copy-paste)
 
