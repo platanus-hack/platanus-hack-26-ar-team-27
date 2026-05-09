@@ -27,6 +27,40 @@ backend (CSV). Default ya incluye `http://localhost:3000`,
 
 ### 1. Pedir un token de streaming
 
+El backend acepta:
+
+- `application/json` para requests sin archivos
+- `multipart/form-data` para requests con adjuntos
+
+Límites de adjuntos en v1:
+
+- hasta `3` archivos
+- formatos `PDF`, `MD`, `TXT`
+- hasta `5 MB` por archivo
+
+```http
+POST /companies/analyze/stream-token
+Content-Type: multipart/form-data
+X-Api-Key: ...
+```
+
+Campos `multipart`:
+
+- `raw_input` (string, obligatorio)
+- `files` (repetido por cada archivo, opcional)
+
+Ejemplo con `curl`:
+
+```bash
+curl -X POST "$API/companies/analyze/stream-token" \
+  -H "X-Api-Key: $BACKEND_API_KEY" \
+  -F 'raw_input=Helio Robotics is a B2B SaaS for predictive maintenance.' \
+  -F 'files=@./pitch-deck.pdf' \
+  -F 'files=@./icp-notes.md'
+```
+
+Si no enviás archivos, podés seguir usando JSON:
+
 ```http
 POST /companies/analyze/stream-token
 Content-Type: application/json
@@ -194,5 +228,5 @@ async function confirmCompany(id: string, fields: Partial<CompanyOut>) {
 | 401  | Falta o no matchea `X-Api-Key` (o token expirado)   |
 | 404  | `company_id` / `domain_id` / `campaign_id` no existe |
 | 409  | `code: "company_not_confirmed"` — confirmá primero  |
-| 422  | Body inválido (validar contra los schemas Pydantic) |
+| 422  | Body inválido, archivo no soportado, demasiado grande o PDF sin texto extraíble |
 | 500  | Bug. Tomá nota de `request_id` (ver headers).       |

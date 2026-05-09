@@ -176,3 +176,30 @@ def test_runner_caps_iterations(session):
     with pytest.raises(AgentRunError) as exc:
         runner.run(_agent(["add_numbers"]), user_input={}, session=session)
     assert exc.value.code == "max_iterations_exceeded"
+
+
+def test_runner_persists_redacted_payload_but_sends_full_user_input(session):
+    stub = _Stub([_final('{"answer": "ok"}')])
+    runner = AgentRunner(_registry(), client=stub, settings=_settings())
+
+    result = runner.run(
+        _agent(["add_numbers"]),
+        user_input={
+            "raw_input": "Prompt wins",
+            "files": [{"name": "deck.pdf"}],
+            "attachment_context": [{"name": "deck.pdf", "text": "sensitive text"}],
+        },
+        persisted_input_payload={
+            "raw_input": "Prompt wins",
+            "files": [{"name": "deck.pdf"}],
+        },
+        session=session,
+    )
+
+    assert result == {"answer": "ok"}
+    run_row = session.query(AgentRun).one()
+    assert run_row.input_payload == {
+        "raw_input": "Prompt wins",
+        "files": [{"name": "deck.pdf"}],
+    }
+    assert "attachment_context" in stub.calls[0]["messages"][0]["content"][0]["text"]

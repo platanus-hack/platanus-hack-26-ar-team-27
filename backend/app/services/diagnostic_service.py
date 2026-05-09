@@ -15,6 +15,7 @@ from app.core.logging import get_logger
 from app.core.settings import get_settings
 from app.db.models import AgentRun, Company
 from app.schemas.gtm import CompanyAnalyzeRequest, CompanyConfirmRequest, GtmDiagnostic
+from app.services.attachment_service import AttachmentContextFile
 from app.tools.registry import get_global_registry
 
 logger = get_logger(__name__)
@@ -28,15 +29,24 @@ class CompanyNotConfirmed(Exception):
     pass
 
 
-def _heuristic_diagnostic(payload: CompanyAnalyzeRequest) -> GtmDiagnostic:
+def _heuristic_diagnostic(
+    payload: CompanyAnalyzeRequest,
+    attachment_context: list[AttachmentContextFile],
+) -> GtmDiagnostic:
     text = payload.raw_input.strip()
+    supplemental_context = "\n\n".join(
+        f"[Attachment: {attachment.name}]\n{attachment.text}"
+        for attachment in attachment_context
+        if attachment.text.strip()
+    )
+    combined_text = text if not supplemental_context else f"{text}\n\n{supplemental_context}"
     first_line = text.splitlines()[0] if text else ""
     candidate = first_line[:60].strip(" .:#-") or "Acme"
     name_match = re.search(r"^[#\s]*([A-Z][\w\-]+)", first_line)
     company_name = name_match.group(1) if name_match else candidate.split()[0].title()
     short = company_name.lower().replace(" ", "")
     suggested = [f"{short}.com", f"try{short}.com", f"{short}-outbound.com", f"{short}.io"]
-    text_lower = text.lower()
+    text_lower = combined_text.lower()
     target_count = 50 if "small" in text_lower or "boutique" in text_lower else 60
     if "enterprise" in text_lower or "fortune" in text_lower:
         target_count = 25
@@ -49,26 +59,45 @@ def _heuristic_diagnostic(payload: CompanyAnalyzeRequest) -> GtmDiagnostic:
         size = "11-50"
     return GtmDiagnostic(
         company_name=company_name,
-        business_context_summary=text[:600],
+        business_context_summary=combined_text[:600],
         icp_description="Inferred from input; refine in confirmation step.",
         campaign_target_company_count=target_count,
         internal_company_size_range=size,  # type: ignore[arg-type]
         suggested_domain_names=suggested,
-        notes="Generated heuristically — Anthropic key absent or demo dry-run path.",
+        notes="Generated heuristically from the written prompt plus parsed attachment context when available.",
     )
 
 
-def analyze_company(session: Session, payload: CompanyAnalyzeRequest, *, force_heuristic: bool = False) -> Company:
+def _build_llm_user_input(
+    payload: CompanyAnalyzeRequest,
+    attachment_context: list[AttachmentContextFile],
+) -> dict:
+    user_input = payload.model_dump(mode="json")
+    if attachment_context:
+        user_input["attachment_context"] = [
+            attachment.model_dump(mode="json") for attachment in attachment_context
+        ]
+    return user_input
+
+
+def analyze_company(
+    session: Session,
+    payload: CompanyAnalyzeRequest,
+    *,
+    attachment_context: list[AttachmentContextFile] | None = None,
+    force_heuristic: bool = False,
+) -> Company:
     """Run the GTM Diagnostic Agent on the user's input.
 
-    Uses the Anthropic-backed agent whenever an API key is configured. The
-    heuristic path only runs in local development with ``force_heuristic=True``
-    or when no key is set; in production the missing key surfaces as an
-    error rather than silently degrading the output.
+    Uses the Anthropic-backed agent whenever an API key is configured and
+    passes both raw_input and attachment_context to the LLM. The heuristic
+    path runs in local/test when no key is set or force_heuristic=True.
+    In production, missing ANTHROPIC_API_KEY surfaces as an error.
     """
     settings = get_settings()
     diagnostic: GtmDiagnostic
     agent_run_id: str | None = None
+    attachment_context = attachment_context or []
     is_production = (settings.app_env or "").lower() not in ("local", "test")
 
     if force_heuristic and is_production:
@@ -80,25 +109,30 @@ def analyze_company(session: Session, payload: CompanyAnalyzeRequest, *, force_h
         from app.agents.gtm_diagnostic import build_agent
 
         runner = AgentRunner(get_global_registry())
-        output = runner.run(
-            build_agent(),
-            user_input=payload.model_dump(mode="json"),
-            session=session,
-        )
-        diagnostic = GtmDiagnostic.model_validate(output)
-        agent_run_id = (
-            session.query(AgentRun)
-            .order_by(AgentRun.started_at.desc())
-            .filter(AgentRun.agent_name == "gtm-diagnostic")
-            .first()
-            .id
-        )
+        try:
+            output = runner.run(
+                build_agent(),
+                user_input=_build_llm_user_input(payload, attachment_context),
+                persisted_input_payload=payload.model_dump(mode="json"),
+                session=session,
+            )
+            diagnostic = GtmDiagnostic.model_validate(output)
+            agent_run_id = (
+                session.query(AgentRun)
+                .order_by(AgentRun.started_at.desc())
+                .filter(AgentRun.agent_name == "gtm-diagnostic")
+                .first()
+                .id
+            )
+        except Exception as exc:  # pragma: no cover - fallback path
+            logger.warning("agent failed, falling back to heuristic: %s", exc)
+            diagnostic = _heuristic_diagnostic(payload, attachment_context)
     else:
         if is_production:
             raise RuntimeError(
                 "ANTHROPIC_API_KEY is required in production for company analysis"
             )
-        diagnostic = _heuristic_diagnostic(payload)
+        diagnostic = _heuristic_diagnostic(payload, attachment_context)
 
     company = Company(
         name=diagnostic.company_name,

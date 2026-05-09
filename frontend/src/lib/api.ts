@@ -15,16 +15,23 @@ const API_BASE =
 const API_KEY =
   process.env.NEXT_PUBLIC_BACKEND_API_KEY || "";
 
-function headers(): HeadersInit {
-  const h: Record<string, string> = { "Content-Type": "application/json" };
+function authHeaders(): HeadersInit {
+  const h: Record<string, string> = {};
   if (API_KEY) h["X-Api-Key"] = API_KEY;
   return h;
+}
+
+function jsonHeaders(): HeadersInit {
+  return {
+    ...authHeaders(),
+    "Content-Type": "application/json",
+  };
 }
 
 async function post<T>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
-    headers: headers(),
+    headers: jsonHeaders(),
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) {
@@ -35,7 +42,7 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
 }
 
 async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, { headers: headers() });
+  const res = await fetch(`${API_BASE}${path}`, { headers: authHeaders() });
   if (!res.ok) {
     const err = await res.text().catch(() => res.statusText);
     throw new Error(`GET ${path} → ${res.status}: ${err}`);
@@ -50,11 +57,24 @@ export interface StreamTokenResp {
   stream_url: string;
 }
 
-export async function getStreamToken(rawInput: string): Promise<StreamTokenResp> {
-  return post<StreamTokenResp>("/companies/analyze/stream-token", {
-    raw_input: rawInput,
-    files: [],
+export async function getStreamToken(
+  rawInput: string,
+  files: File[] = []
+): Promise<StreamTokenResp> {
+  const formData = new FormData();
+  formData.append("raw_input", rawInput);
+  files.forEach((file) => formData.append("files", file));
+
+  const res = await fetch(`${API_BASE}/companies/analyze/stream-token`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: formData,
   });
+  if (!res.ok) {
+    const err = await res.text().catch(() => res.statusText);
+    throw new Error(`POST /companies/analyze/stream-token → ${res.status}: ${err}`);
+  }
+  return res.json();
 }
 
 export function streamDiagnostic(
@@ -67,18 +87,43 @@ export function streamDiagnostic(
   }
 ): EventSource {
   const es = new EventSource(`${API_BASE}${streamUrl}`);
+
+  function parseEventData<T>(event: Event): T | null {
+    const rawData = (event as MessageEvent).data;
+    if (typeof rawData !== "string" || rawData.length === 0) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(rawData) as T;
+    } catch {
+      return null;
+    }
+  }
+
   es.addEventListener("start", (e) => {
-    handlers.onStart?.(JSON.parse((e as MessageEvent).data));
+    const payload = parseEventData<{ message: string; use_anthropic: boolean }>(e);
+    if (payload) handlers.onStart?.(payload);
   });
   es.addEventListener("step", (e) => {
-    handlers.onStep?.(JSON.parse((e as MessageEvent).data));
+    const payload = parseEventData<{ label: string; message: string }>(e);
+    if (payload) handlers.onStep?.(payload);
   });
   es.addEventListener("done", (e) => {
-    handlers.onDone?.(JSON.parse((e as MessageEvent).data));
+    const payload = parseEventData<{ company: CompanyOut }>(e);
+    if (payload) handlers.onDone?.(payload);
     es.close();
   });
   es.addEventListener("error", (e) => {
-    handlers.onError?.({ message: (e as MessageEvent).data ?? "stream error" });
+    const payload = parseEventData<{ message?: string }>(e);
+    const rawData = (e as MessageEvent).data;
+    handlers.onError?.({
+      message:
+        payload?.message ??
+        (typeof rawData === "string" && rawData.trim().length > 0
+          ? rawData
+          : "stream error"),
+    });
     es.close();
   });
   return es;

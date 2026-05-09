@@ -15,6 +15,11 @@ matching the `GtmDiagnostic` schema:
 - notes (optional brief explanation)
 
 Rules:
+- The input payload may include `attachment_context`, which contains text
+  extracted from uploaded PDF, MD, or TXT files. Use it as supplemental
+  context only.
+- If the written `raw_input` conflicts with any attachment, prioritize the
+  user's written prompt and treat the attachment as secondary evidence.
 - Never invent verifiable facts. If the input does not specify the
   team size, set `internal_company_size_range="unknown"` and mention it
   in `notes`.

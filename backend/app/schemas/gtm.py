@@ -9,15 +9,22 @@ SizeRange = Literal["solo", "2-10", "11-50", "51-200", "201+", "unknown"]
 
 
 class SourceFile(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1)
     content_type: str | None = None
-    size_bytes: int | None = None
+    size_bytes: int | None = Field(default=None, ge=0)
     note: str | None = None
 
 
 class CompanyAnalyzeRequest(BaseModel):
     raw_input: str = Field(..., min_length=1)
     files: list[SourceFile] = Field(default_factory=list)
+
+    @field_validator("files")
+    @classmethod
+    def _max_files(cls, value: list[SourceFile]) -> list[SourceFile]:
+        if len(value) > 3:
+            raise ValueError("At most 3 files are allowed.")
+        return value
 
 
 class GtmDiagnostic(BaseModel):

@@ -13,10 +13,19 @@ interface OnboardingScreenProps {
     suggested_domain_names?: string[];
   }) => void;
   onBack: () => void;
+  onEdit?: () => void;
   isLoading: boolean;
+  confirmError?: string;
 }
 
-export default function OnboardingScreen({ company, onConfirm, onBack, isLoading }: OnboardingScreenProps) {
+export default function OnboardingScreen({
+  company,
+  onConfirm,
+  onBack,
+  onEdit,
+  isLoading,
+  confirmError,
+}: OnboardingScreenProps) {
   const [name, setName] = useState(company.name);
   const [icp, setIcp] = useState(company.icp_description ?? "");
   const [targetCount, setTargetCount] = useState(company.target_company_count);
@@ -24,7 +33,13 @@ export default function OnboardingScreen({ company, onConfirm, onBack, isLoading
   const [sizeRange, setSizeRange] = useState<SizeRange>((company.internal_company_size_range ?? "2-10") as SizeRange);
 
   const suggestedDomains = company.suggested_domain_names ?? [];
-  const totalEstCost = suggestedDomains.slice(0, 2).length * 3.49;
+  const plannedDomains = suggestedDomains.slice(0, 2);
+  const totalEstCost = plannedDomains.length * 3.49;
+  const businessContextSummary = company.business_context_summary?.slice(0, 100);
+  const domainPlanDescription =
+    plannedDomains.length > 0
+      ? `Sugerencias: ${plannedDomains.join(" · ")} · costo estimado $${totalEstCost.toFixed(2)}`
+      : "Todavía no detectamos dominios sugeridos para outbound.";
 
   return (
     <div className="onboarding-shell fade-up">
@@ -34,7 +49,7 @@ export default function OnboardingScreen({ company, onConfirm, onBack, isLoading
           <h2>Esto leímos de tu pitch.</h2>
           <div className="sub">Si algo no te cierra, editalo. Si todo OK, lanzamos los 5 agentes.</div>
         </div>
-        <button className="btn btn-ghost" onClick={onBack}>← Volver al input</button>
+        <button className="btn btn-ghost" onClick={onBack} disabled={isLoading}>← Volver al input</button>
       </div>
 
       <div className="onb-grid">
@@ -52,7 +67,11 @@ export default function OnboardingScreen({ company, onConfirm, onBack, isLoading
               <input
                 style={{ fontFamily: "var(--sans)", fontSize: 13, border: "1px solid var(--line)", borderRadius: 7, padding: "4px 8px", background: "var(--bg-1)", color: "var(--fg)", textAlign: "right" }}
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  onEdit?.();
+                  setName(e.target.value);
+                }}
+                disabled={isLoading}
               />
             </div>
             <div className="row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
@@ -60,7 +79,11 @@ export default function OnboardingScreen({ company, onConfirm, onBack, isLoading
               <textarea
                 style={{ fontFamily: "var(--sans)", fontSize: 13, border: "1px solid var(--line)", borderRadius: 7, padding: "6px 8px", background: "var(--bg-1)", color: "var(--fg)", resize: "vertical", width: "100%" }}
                 value={icp}
-                onChange={(e) => setIcp(e.target.value)}
+                onChange={(e) => {
+                  onEdit?.();
+                  setIcp(e.target.value);
+                }}
+                disabled={isLoading}
                 rows={3}
               />
             </div>
@@ -70,7 +93,11 @@ export default function OnboardingScreen({ company, onConfirm, onBack, isLoading
                 type="number"
                 style={{ fontFamily: "var(--sans)", fontSize: 13, border: "1px solid var(--line)", borderRadius: 7, padding: "4px 8px", background: "var(--bg-1)", color: "var(--fg)", width: 80, textAlign: "right" }}
                 value={targetCount}
-                onChange={(e) => setTargetCount(Number(e.target.value))}
+                onChange={(e) => {
+                  onEdit?.();
+                  setTargetCount(Number(e.target.value));
+                }}
+                disabled={isLoading}
               />
             </div>
             <div className="row">
@@ -78,7 +105,11 @@ export default function OnboardingScreen({ company, onConfirm, onBack, isLoading
               <select
                 style={{ fontFamily: "var(--sans)", fontSize: 13, border: "1px solid var(--line)", borderRadius: 7, padding: "4px 8px", background: "var(--bg-1)", color: "var(--fg)" }}
                 value={sizeRange}
-                onChange={(e) => setSizeRange(e.target.value as SizeRange)}
+                onChange={(e) => {
+                  onEdit?.();
+                  setSizeRange(e.target.value as SizeRange);
+                }}
+                disabled={isLoading}
               >
                 {["solo", "2-10", "11-50", "51-200", "201+"].map((s) => (
                   <option key={s} value={s}>{s} empleados</option>
@@ -98,7 +129,7 @@ export default function OnboardingScreen({ company, onConfirm, onBack, isLoading
             <div className="row">
               <span className="k">Contexto</span>
               <span className="v" style={{ fontSize: 12, color: "var(--fg-2)", maxWidth: 280, textAlign: "right" }}>
-                {company.business_context_summary?.slice(0, 100)}…
+                {businessContextSummary ? `${businessContextSummary}…` : "Sin resumen disponible."}
               </span>
             </div>
           </div>
@@ -115,7 +146,7 @@ export default function OnboardingScreen({ company, onConfirm, onBack, isLoading
           <div className="body">
             {[
               { tone: "diagnostic", n: "01", title: "Diagnóstico", desc: `Estructurar pitch en ICP + plan. Estimamos ${targetCount} prospects de tamaño ${sizeRange}.` },
-              { tone: "domain", n: "02", title: "Compra de dominios · 2", desc: `Sugerencias: ${suggestedDomains.slice(0, 2).join(" · ")} · costo estimado $${totalEstCost.toFixed(2)}` },
+              { tone: "domain", n: "02", title: "Compra de dominios · 2", desc: domainPlanDescription },
               { tone: "dns", n: "03", title: "Configuración DNS", desc: "MX + SPF + DKIM + DMARC en ambos dominios. Verificación automática vía DoH." },
               { tone: "warmup", n: "04", title: "Warmup · 7 días", desc: "Ping-pong entre dominios. Reputación objetivo: 90/100. Acelerable con seed 1k cuentas." },
               { tone: "research", n: "05", title: "Research & Send", desc: `Encontrar 6 prospects high-fit, redactar emails personalizados, enviar al primer batch.` },
@@ -138,7 +169,12 @@ export default function OnboardingScreen({ company, onConfirm, onBack, isLoading
           <span className="b">Diagnóstico → Dominios → DNS → Warmup → Research · podés ver todo en vivo</span>
         </div>
         <div style={{ display: "flex", gap: 10 }}>
-          <button className="btn btn-ghost" onClick={onBack}>← Volver</button>
+          {confirmError && (
+            <p className="attach-error" style={{ maxWidth: 320, alignSelf: "center" }}>
+              {confirmError}
+            </p>
+          )}
+          <button className="btn btn-ghost" onClick={onBack} disabled={isLoading}>← Volver</button>
           <button
             className="btn btn-dark"
             disabled={isLoading}

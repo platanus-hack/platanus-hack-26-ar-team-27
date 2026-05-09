@@ -15,45 +15,68 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>("landing");
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState("");
+  const [landingError, setLandingError] = useState("");
+  const [onboardingError, setOnboardingError] = useState("");
   const [company, setCompany] = useState<CompanyOut | null>(null);
   const [rawInput, setRawInput] = useState("");
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
 
-  async function handleLandingSubmit(prompt: string) {
+  async function handleLandingSubmit(prompt: string, files: File[]) {
     setIsLoading(true);
     setLoadingStep("Obteniendo token de stream…");
+    setLandingError("");
+    setOnboardingError("");
     setRawInput(prompt);
+    setCompany(null);
+    setDashboardData(null);
+
+    let tokenResp: { stream_url: string };
     try {
-      const tokenResp = await getStreamToken(prompt);
+      tokenResp = await getStreamToken(prompt, files);
+    } catch (e) {
+      console.error("Stream token error:", e);
+      setLandingError(
+        getErrorMessage(
+          e,
+          "No pudimos iniciar el análisis. Probá de nuevo en unos minutos.",
+        ),
+      );
+      setIsLoading(false);
+      setLoadingStep("");
+      return;
+    }
+
+    try {
       setLoadingStep("Analizando tu pitch con IA…");
-      await new Promise<void>((resolve, reject) => {
-        const es = streamDiagnostic(tokenResp.stream_url, {
+      const analyzedCompany = await new Promise<CompanyOut>((resolve, reject) => {
+        let isSettled = false;
+        let es: EventSource | null = null;
+
+        const finish = (callback: () => void) => {
+          if (isSettled) return;
+          isSettled = true;
+          window.clearTimeout(timeoutId);
+          es?.close();
+          callback();
+        };
+
+        const timeoutId = window.setTimeout(() => {
+          finish(() => reject(new Error("timeout")));
+        }, 125_000);
+
+        es = streamDiagnostic(tokenResp.stream_url, {
           onStart: (d) => setLoadingStep(d.message ?? "Iniciando análisis…"),
           onStep: (d) => setLoadingStep(d.message ?? d.label),
-          onDone: (d) => {
-            setCompany(d.company);
-            resolve();
-          },
-          onError: (d) => reject(new Error(d.message)),
+          onDone: (d) => finish(() => resolve(d.company)),
+          onError: (d) => finish(() => reject(new Error(d.message))),
         });
-        setTimeout(() => { es.close(); reject(new Error("timeout")); }, 60_000);
       });
+
+      setCompany(analyzedCompany);
       setScreen("onboarding");
     } catch (e) {
       console.error("Diagnostic error:", e);
-      // Fallback: create a stub company so the demo still works
-      setCompany({
-        id: "demo-" + Date.now(),
-        name: extractName(prompt),
-        business_context_summary: prompt.slice(0, 200),
-        icp_description: "Extraído del pitch — editable",
-        internal_company_size_range: "2-10",
-        target_company_count: 50,
-        suggested_domain_names: generateDomainSuggestions(prompt),
-        confirmation_status: "pending_user_confirmation",
-        agent_run_id: null,
-      });
-      setScreen("onboarding");
+      setLandingError(getDiagnosticErrorMessage(e));
     } finally {
       setIsLoading(false);
       setLoadingStep("");
@@ -63,24 +86,23 @@ export default function App() {
   async function handleConfirm(payload: ConfirmPayload) {
     if (!company) return;
     setIsLoading(true);
+    setLoadingStep("Confirmando startup…");
+    setOnboardingError("");
     try {
       const confirmed = await confirmCompany(company.id, payload);
       setCompany(confirmed);
+      setScreen("stage");
     } catch (e) {
       console.error("Confirm error:", e);
-      // Update local company state with user edits even if API fails
-      setCompany((prev) => prev ? {
-        ...prev,
-        name: payload.company_name ?? prev.name,
-        icp_description: payload.icp_description ?? prev.icp_description,
-        target_company_count: payload.campaign_target_company_count ?? prev.target_company_count,
-        internal_company_size_range: (payload.internal_company_size_range as CompanyOut["internal_company_size_range"]) ?? prev.internal_company_size_range,
-        suggested_domain_names: payload.suggested_domain_names ?? prev.suggested_domain_names,
-        confirmation_status: "confirmed",
-      } : prev);
+      setOnboardingError(
+        getErrorMessage(
+          e,
+          "No pudimos confirmar la startup. Revisá los datos e intentá de nuevo.",
+        ),
+      );
     } finally {
       setIsLoading(false);
-      setScreen("stage");
+      setLoadingStep("");
     }
   }
 
@@ -91,9 +113,31 @@ export default function App() {
 
   function handleReset() {
     setScreen("landing");
+    setIsLoading(false);
+    setLoadingStep("");
     setCompany(null);
     setDashboardData(null);
     setRawInput("");
+    setLandingError("");
+    setOnboardingError("");
+  }
+
+  function handleLandingInputChange() {
+    if (!landingError) return;
+    setLandingError("");
+  }
+
+  function handleOnboardingEdit() {
+    if (!onboardingError) return;
+    setOnboardingError("");
+  }
+
+  function handleOnboardingBack() {
+    setScreen("landing");
+    setCompany(null);
+    setLoadingStep("");
+    setLandingError("");
+    setOnboardingError("");
   }
 
   return (
@@ -102,16 +146,20 @@ export default function App() {
       {screen === "landing" && (
         <LandingScreen
           onSubmit={handleLandingSubmit}
+          onInputChange={handleLandingInputChange}
           isLoading={isLoading}
           loadingStep={loadingStep}
+          submitError={landingError}
         />
       )}
       {screen === "onboarding" && company && (
         <OnboardingScreen
           company={company}
           onConfirm={handleConfirm}
-          onBack={() => setScreen("landing")}
+          onBack={handleOnboardingBack}
+          onEdit={handleOnboardingEdit}
           isLoading={isLoading}
+          confirmError={onboardingError}
         />
       )}
       {screen === "stage" && company && (
@@ -138,12 +186,50 @@ export default function App() {
   );
 }
 
-function extractName(prompt: string): string {
-  const match = prompt.match(/^([A-Z][a-z]+(?: [A-Z][a-z]+)*)/);
-  return match?.[1] ?? "Mi Startup";
+function getDiagnosticErrorMessage(error: unknown): string {
+  const message = getErrorMessage(
+    error,
+    "No pudimos analizar tu pitch. Probá de nuevo en unos minutos.",
+  );
+
+  if (message === "timeout" || message === "agent timeout") {
+    return "El análisis tardó demasiado. Probá de nuevo en unos minutos.";
+  }
+
+  if (message === "stream error") {
+    return "Se cortó la conexión con el backend durante el análisis. Probá de nuevo.";
+  }
+
+  return message;
 }
 
-function generateDomainSuggestions(prompt: string): string[] {
-  const name = extractName(prompt).toLowerCase().replace(/\s+/g, "");
-  return [`${name}.io`, `try${name}.com`, `${name}-hq.co`];
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (!(error instanceof Error) || !error.message) return fallback;
+
+  const detailMatch = error.message.match(/:\s*(\{.*\}|\[.*\]|".*")$/);
+  if (!detailMatch) {
+    return error.message;
+  }
+
+  try {
+    const parsed = JSON.parse(detailMatch[1]) as {
+      detail?: string | { msg?: string; message?: string }[] | { message?: string };
+      message?: string;
+    };
+
+    if (typeof parsed.message === "string") return parsed.message;
+    if (typeof parsed.detail === "string") return parsed.detail;
+    if (
+      parsed.detail &&
+      !Array.isArray(parsed.detail) &&
+      typeof parsed.detail.message === "string"
+    ) {
+      return parsed.detail.message;
+    }
+    if (Array.isArray(parsed.detail) && parsed.detail[0]?.msg) return parsed.detail[0].msg;
+  } catch {
+    return error.message;
+  }
+
+  return error.message;
 }

@@ -51,6 +51,7 @@ class AgentRunner:
         agent: Agent,
         *,
         user_input: dict[str, Any],
+        persisted_input_payload: dict[str, Any] | None = None,
         session: Session,
         company_id: str | None = None,
         execute: bool = False,
@@ -62,7 +63,7 @@ class AgentRunner:
             model=agent.model or self._settings.anthropic_model,
             status="running",
             started_at=datetime.now(tz=UTC),
-            input_payload=user_input,
+            input_payload=persisted_input_payload or user_input,
             transcript=[],
         )
         session.add(agent_run)

@@ -242,17 +242,41 @@ input, textarea, select { font-family: inherit; }
 .prompt-box textarea::placeholder { color:var(--fg-3); }
 .prompt-foot { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
 .prompt-attach { display:flex; gap:8px; flex-wrap:wrap; }
+.attach-stack { display:flex; flex-direction:column; gap:8px; min-width:min(100%, 420px); }
 .attach-chip {
   display:inline-flex; align-items:center; gap:8px; padding:8px 12px;
   border:1px dashed var(--line-strong); border-radius:10px; background:var(--bg-1);
   font-size:12.5px; color:var(--fg-1); cursor:pointer; transition:all 0.15s ease;
+  width:fit-content;
 }
-.attach-chip:hover { background:var(--bg-3); border-style:solid; }
+.attach-chip:hover:not(:disabled) { background:var(--bg-3); border-style:solid; }
+.attach-chip:disabled { opacity:0.65; cursor:not-allowed; }
 .attach-chip.is-loaded {
   border-style:solid; border-color:var(--research-line);
   background:var(--research-soft); color:var(--research-ink);
 }
 .attach-chip .file-name { font-family:var(--mono); font-size:11.5px; }
+.attach-list {
+  display:flex; flex-direction:column; gap:6px;
+  width:100%;
+}
+.attach-item {
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:8px 10px; border:1px solid var(--line); border-radius:10px; background:var(--bg-1);
+  font-size:12px; color:var(--fg-1);
+}
+.attach-item-name {
+  min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  font-family:var(--mono);
+}
+.attach-remove {
+  border:0; background:transparent; color:var(--diagnostic-ink);
+  font-size:11.5px; font-weight:600; padding:0;
+}
+.attach-remove:disabled { cursor:not-allowed; opacity:0.5; }
+.attach-error {
+  margin:0; color:var(--domain-ink); font-size:12px; line-height:1.4;
+}
 .prompt-submit {
   display:inline-flex; align-items:center; gap:10px; padding:11px 18px;
   background:var(--fg); color:var(--bg-1); border-radius:12px; border:0;

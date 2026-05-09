@@ -10,6 +10,7 @@ import os
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 # Make sure pydantic-settings doesn't pick up an unrelated .env when running
 os.environ.setdefault("APP_ENV", "test")
@@ -39,7 +40,12 @@ def reset_settings_cache():
 
 @pytest.fixture()
 def db_engine():
-    engine = create_engine("sqlite:///:memory:", future=True, connect_args={"check_same_thread": False})
+    engine = create_engine(
+        "sqlite://",
+        future=True,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     Base.metadata.create_all(engine)
     yield engine
     engine.dispose()

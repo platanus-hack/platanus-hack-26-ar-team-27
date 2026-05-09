@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import type { ChangeEvent } from "react";
 
 const EXAMPLES = [
   {
@@ -26,13 +27,66 @@ const EXAMPLES = [
 ];
 
 interface LandingScreenProps {
-  onSubmit: (prompt: string) => void;
+  onSubmit: (prompt: string, files: File[]) => void;
+  onInputChange?: () => void;
   isLoading: boolean;
   loadingStep?: string;
+  submitError?: string;
 }
 
-export default function LandingScreen({ onSubmit, isLoading, loadingStep }: LandingScreenProps) {
+const MAX_FILES = 3;
+const MAX_FILE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_EXTENSIONS = new Set(["pdf", "md", "txt"]);
+
+export default function LandingScreen({
+  onSubmit,
+  onInputChange,
+  isLoading,
+  loadingStep,
+  submitError,
+}: LandingScreenProps) {
   const [prompt, setPrompt] = useState(EXAMPLES[0].raw);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [fileError, setFileError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  function handleOpenFilePicker() {
+    if (isLoading) return;
+    fileInputRef.current?.click();
+  }
+
+  function handleFileSelection(event: ChangeEvent<HTMLInputElement>) {
+    const pickedFiles = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (pickedFiles.length === 0) return;
+    onInputChange?.();
+
+    const nextFiles = [...selectedFiles];
+    const seen = new Set(selectedFiles.map((file) => getFileKey(file)));
+
+    for (const file of pickedFiles) {
+      if (seen.has(getFileKey(file))) continue;
+      nextFiles.push(file);
+      seen.add(getFileKey(file));
+    }
+
+    const validationError = validateFiles(nextFiles);
+    if (validationError) {
+      setFileError(validationError);
+      return;
+    }
+
+    setFileError("");
+    setSelectedFiles(nextFiles);
+  }
+
+  function handleRemoveFile(fileToRemove: File) {
+    if (isLoading) return;
+    onInputChange?.();
+    const nextFiles = selectedFiles.filter((file) => getFileKey(file) !== getFileKey(fileToRemove));
+    setSelectedFiles(nextFiles);
+    setFileError("");
+  }
 
   return (
     <div className="landing-shell">
@@ -80,26 +134,66 @@ export default function LandingScreen({ onSubmit, isLoading, loadingStep }: Land
         )}
         <textarea
           value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
+          onChange={(e) => {
+            onInputChange?.();
+            setPrompt(e.target.value);
+          }}
           placeholder="Contanos qué hace tu startup, a quién apuntás y cuántos prospects querés alcanzar…"
           disabled={isLoading}
           rows={5}
         />
         <div className="prompt-foot">
           <div className="prompt-attach">
-            <span className="attach-chip" style={{ cursor: "default", opacity: 0.5 }}>
-              <span className="ico">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M9 13h6M9 17h4" />
-                </svg>
-              </span>
-              <span>Pitch deck</span>
-              <span className="file-name">PDF · MD · TXT (opcional)</span>
-            </span>
+            <div className="attach-stack">
+              <input
+                ref={fileInputRef}
+                type="file"
+                hidden
+                multiple
+                accept=".pdf,.md,.txt,text/plain,text/markdown,application/pdf"
+                onChange={handleFileSelection}
+                disabled={isLoading}
+              />
+              <button
+                type="button"
+                className={`attach-chip${selectedFiles.length > 0 ? " is-loaded" : ""}`}
+                onClick={handleOpenFilePicker}
+                disabled={isLoading}
+              >
+                <span className="ico">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M9 13h6M9 17h4" />
+                  </svg>
+                </span>
+                <span>{selectedFiles.length > 0 ? `${selectedFiles.length} adjunto${selectedFiles.length > 1 ? "s" : ""}` : "Pitch deck"}</span>
+                <span className="file-name">
+                  {selectedFiles.length > 0 ? "Listo para enviar" : "PDF · MD · TXT · hasta 5 MB"}
+                </span>
+              </button>
+              {selectedFiles.length > 0 && (
+                <div className="attach-list">
+                  {selectedFiles.map((file) => (
+                    <div key={getFileKey(file)} className="attach-item">
+                      <span className="attach-item-name">{file.name}</span>
+                      <button
+                        type="button"
+                        className="attach-remove"
+                        onClick={() => handleRemoveFile(file)}
+                        disabled={isLoading}
+                      >
+                        Quitar
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {fileError && <p className="attach-error">{fileError}</p>}
+              {submitError && <p className="attach-error">{submitError}</p>}
+            </div>
           </div>
           <button
             className="prompt-submit"
-            onClick={() => onSubmit(prompt)}
+            onClick={() => onSubmit(prompt, selectedFiles)}
             disabled={isLoading || !prompt.trim()}
           >
             <span>Empezar</span>
@@ -110,7 +204,15 @@ export default function LandingScreen({ onSubmit, isLoading, loadingStep }: Land
 
       <div className="examples fade-up" style={{ animationDelay: "0.2s" }}>
         {EXAMPLES.map((s) => (
-          <button key={s.key} className="example-card" onClick={() => setPrompt(s.raw)} disabled={isLoading}>
+          <button
+            key={s.key}
+            className="example-card"
+            onClick={() => {
+              onInputChange?.();
+              setPrompt(s.raw);
+            }}
+            disabled={isLoading}
+          >
             <span className="ex-tag">{s.stack}</span>
             <span className="ex-title">{s.name}</span>
             <span className="ex-hint">{s.hint}</span>
@@ -119,4 +221,26 @@ export default function LandingScreen({ onSubmit, isLoading, loadingStep }: Land
       </div>
     </div>
   );
+}
+
+function getFileKey(file: File): string {
+  return `${file.name}:${file.size}:${file.lastModified}`;
+}
+
+function validateFiles(files: File[]): string | null {
+  if (files.length > MAX_FILES) {
+    return "Podés adjuntar hasta 3 archivos.";
+  }
+
+  for (const file of files) {
+    const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+    if (!ALLOWED_EXTENSIONS.has(extension)) {
+      return `El archivo '${file.name}' no está soportado. Usá PDF, MD o TXT.`;
+    }
+    if (file.size > MAX_FILE_BYTES) {
+      return `El archivo '${file.name}' supera el límite de 5 MB.`;
+    }
+  }
+
+  return null;
 }
