@@ -49,9 +49,16 @@ uvicorn app.main:app --reload --port 8000
 
 ### Deploy
 
-Backend deploys to Render as a Python web service. See
-`backend/docs/FRONTEND_API.md` for the API contract and the `render.yaml`
-at repo root for the service definition.
+Backend está deployado en Render como Python web service:
+
+- **Producción**: https://platanus-hack-26-ar-team-27.onrender.com
+- **Health**: https://platanus-hack-26-ar-team-27.onrender.com/health
+- Render config: `render.yaml` en root (Blueprint, `rootDir: backend`).
+- Contrato HTTP: [`backend/docs/FRONTEND_API.md`](backend/docs/FRONTEND_API.md).
+
+> El plan Free de Render duerme el servicio tras 15 min de inactividad.
+> Configurar [UptimeRobot](https://uptimerobot.com) o equivalente para
+> hacer `GET /health` cada 5 min y mantenerlo despierto.
 
 ## Frontend
 

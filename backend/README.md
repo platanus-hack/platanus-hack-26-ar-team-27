@@ -76,6 +76,8 @@ APIs.
 
 ## Deploy (Render — Web Service manual)
 
+**URL de producción:** https://platanus-hack-26-ar-team-27.onrender.com
+
 `render.yaml` lives at the repo root with `rootDir: backend`. For the Free
 tier (no Blueprints), create a manual Web Service in the Render panel:
 
@@ -90,6 +92,19 @@ tier (no Blueprints), create a manual Web Service in the Render panel:
 
 Then paste the env vars from your local `.env` (skip `BACKEND_API_KEY` —
 generate a fresh one for production).
+
+### Mantener vivo el servicio (Free tier)
+
+Render Free duerme el servicio tras 15 min de inactividad. Para mantenerlo
+despierto, configurá un monitor externo que pegue a `/health` cada 5 min:
+
+- [UptimeRobot](https://uptimerobot.com) (recomendado, free, 5 min interval)
+- [Cron-job.org](https://cron-job.org) (free, intervalo configurable hasta 1 min)
+
+URL a monitorear:
+```
+https://platanus-hack-26-ar-team-27.onrender.com/health
+```
 
 ## Enabling real actions
 

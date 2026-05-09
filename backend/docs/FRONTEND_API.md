@@ -1,7 +1,11 @@
 # Frontend ↔ Backend API
 
-Backend deployado en Render (URL provista por el equipo). Mientras se desarrolla:
-`http://localhost:8000`.
+## Base URLs
+
+- **Producción**: `https://platanus-hack-26-ar-team-27.onrender.com`
+- **Desarrollo local**: `http://localhost:8000`
+
+Health check público: `GET /health` → `{"status":"ok"}` (sin auth).
 
 ## Auth
 
@@ -157,7 +161,7 @@ GET  /campaigns/{id}
 ## Ejemplos rápidos (fetch)
 
 ```ts
-const API = "https://gtm-b2b-mvp.onrender.com";
+const API = "https://platanus-hack-26-ar-team-27.onrender.com";
 const KEY = import.meta.env.VITE_BACKEND_API_KEY;
 
 async function startAnalysis(rawInput: string) {
