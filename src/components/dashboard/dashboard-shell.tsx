@@ -85,6 +85,26 @@ export function DashboardShell({ projectId }: DashboardShellProps) {
   const [uiError, setUiError] = useState<string | null>(null);
   const [replayRunning, setReplayRunning] = useState(false);
   const [flowStarted, setFlowStarted] = useState(false);
+  const [resetting, setResetting] = useState(false);
+
+  async function resetProject() {
+    if (resetting) return;
+    const confirmed = window.confirm(
+      "Esto descarta el proyecto actual (catálogo, brief, agentes y campañas) y arranca uno nuevo. ¿Continuar?",
+    );
+    if (!confirmed) return;
+    setResetting(true);
+    try {
+      const res = await fetch("/api/project/reset", { method: "POST" });
+      if (!res.ok) throw new Error(`reset ${res.status}`);
+      // Full reload: el root lee la cookie nueva y redirige a /dashboard/<nuevo>.
+      window.location.href = "/";
+    } catch (err) {
+      console.error("[resetProject] failed", err);
+      setUiError("No pudimos arrancar un proyecto nuevo. Probá de nuevo.");
+      setResetting(false);
+    }
+  }
 
   const launchCreativeIds = useMemo(
     () => ads.map((ad) => ad.id).slice(0, 9),
@@ -341,6 +361,15 @@ export function DashboardShell({ projectId }: DashboardShellProps) {
               disabled={replayRunning}
             >
               {replayRunning ? "Reproduciendo demo…" : "Modo demo replay"}
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={resetProject}
+              disabled={resetting}
+              title="Borra el proyecto actual y arranca uno nuevo"
+            >
+              {resetting ? "Limpiando…" : "Nuevo proyecto"}
             </button>
             <LaunchDemo creativeIds={launchCreativeIds} />
           </div>
