@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit",
     "seed:influencers": "tsx scripts/seed/seed-influencers.ts",
     "seed:scrape": "tsx scripts/seed/scrape-influencers.ts",
+    "seed:embed": "tsx scripts/seed/generate-embeddings.ts",
+    "snapshot:events": "tsx scripts/seed/snapshot-agent-events.ts",
     "db:migrate": "echo 'Run: psql $SUPABASE_DB_URL -f supabase/migrations/001_init.sql'"
   },
   "dependencies": {

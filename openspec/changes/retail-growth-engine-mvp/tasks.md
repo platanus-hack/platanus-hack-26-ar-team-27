@@ -44,14 +44,14 @@
 - [x] 2.17 Cargar batch en `influencers` con UPSERT — 100 perfiles cargados (path por default sintético via LLM, fallback Playwright disponible). DB confirmada con 100 filas.
 
 ### T1 — UI shell + visual identity
-- [ ] 2.18 Layout principal stage-style (slate-950 fondo, header minimalista, sin sidebar — un solo proyecto activo por sesión)
-- [ ] 2.19 Pantalla de onboarding (3 pasos: catálogo → brief → confirmar)
-- [ ] 2.20 Hook `useAgentStream(projectId)` que consume SSE y mantiene state local
-- [ ] 2.21 Componente `<AgentStage>`: 4 cards horizontales (Strategy/Creative/Influencer/Launch) con accent colors (violet/fuchsia/cyan/emerald) y borde gradient animado para el activo
-- [ ] 2.22 Componente `<LiveThinking>` debajo del agente activo: tokens streaming letra por letra (mono font) + chips de tools llamadas
-- [ ] 2.23 Animación de artifacts emergiendo del stage hacia las secciones del dashboard (Framer Motion `layoutId`)
-- [ ] 2.24 Stub del dashboard con slots vacíos (hero SKUs, ad gallery, influencer cards)
-- [ ] 2.25 Sin login: el primer hit del root crea cookie `project_id` con UUID y redirige al dashboard
+- [x] 2.18 Layout principal stage-style (slate-950 fondo, header minimalista, sin sidebar — un solo proyecto activo por sesión)
+- [x] 2.19 Pantalla de onboarding (3 pasos: catálogo → brief → confirmar)
+- [x] 2.20 Hook `useAgentStream(projectId)` que consume SSE y mantiene state local
+- [x] 2.21 Componente `<AgentStage>`: 4 cards horizontales (Strategy/Creative/Influencer/Launch) con accent colors (violet/fuchsia/cyan/emerald) y borde gradient animado para el activo
+- [x] 2.22 Componente `<LiveThinking>` debajo del agente activo: tokens streaming letra por letra (mono font) + chips de tools llamadas
+- [x] 2.23 Animación de artifacts emergiendo del stage hacia las secciones del dashboard (Framer Motion `layoutId`)
+- [x] 2.24 Stub del dashboard con slots vacíos (hero SKUs, ad gallery, influencer cards)
+- [x] 2.25 Sin login: el primer hit del root crea cookie `project_id` con UUID y redirige al dashboard
 
 ### T4 — Pipeline de imagen (mockeada por default; NVIDIA después)
 - [x] 2.26 Wrapper único `generateImage()` en `lib/agents/creative/image-gen.ts` (ya scaffoldeado) — todo caller pasa por acá
@@ -60,11 +60,11 @@
 - [ ] 2.28a (Post-MVP / cuando se decida) Integrar modelo NVIDIA gratis dentro de `generateImage()` — identificar modelo concreto (NIM, edify, SD via NGC) y wrapearlo
 
 ### T5 — DevOps + scaffolding launch mock + demo catalog
-- [ ] 2.29 CI básica: typecheck en push, deploy preview en PR
-- [ ] 2.30 Configurar Vercel para mantener Edge Functions warm (cron ping cada 5min)
-- [ ] 2.31 Componente `<LaunchAnimation>` con los 4 pasos y timings (3-5s c/u, accent emerald)
-- [ ] 2.32 Endpoint `POST /api/campaigns/launch-mock` que persiste y emite eventos al bus
-- [ ] 2.33 Generar catálogo de prueba placeholder en `scripts/seed/demo-catalog.csv` (12 SKUs ficticios moda femenina con imágenes Unsplash) — para validar parser; el equipo lo reemplaza después con uno descargado real
+- [x] 2.29 CI básica: typecheck en push, deploy preview en PR
+- [ ] 2.30 Configurar Vercel para mantener Edge Functions warm (cron ping cada 5min) **(bloqueado: requiere configuración manual en Vercel Dashboard / cron externo fuera del repo)**
+- [x] 2.31 Componente `<LaunchAnimation>` con los 4 pasos y timings (3-5s c/u, accent emerald)
+- [x] 2.32 Endpoint `POST /api/campaigns/launch-mock` que persiste y emite eventos al bus
+- [x] 2.33 Generar catálogo de prueba placeholder en `scripts/seed/demo-catalog.csv` (12 SKUs ficticios moda femenina con imágenes Unsplash) — para validar parser; el equipo lo reemplaza después con uno descargado real
 
 ## 3. Ola 2 — Agentes (depende de bus + DB ready)
 
@@ -99,35 +99,35 @@
 ## 4. Ola 3 — UI viva e integración end-to-end
 
 ### T1 — UI de outputs
-- [ ] 4.1 Componente `<HeroSkusSection>` con tags por SKU prioritario
-- [ ] 4.2 Componente `<AdGallery>` agrupado por hero SKU, 9 ads con `variant_label` visible, lazy load
-- [ ] 4.3 Componente `<InfluencerCard>` con avatar, handle, métricas, match_score, botón "Ver DMs"
-- [ ] 4.4 `<DmPanel>` expandible con dos tabs (Initial / Follow-up), cada uno con su mensaje + botón "Copiar"; tab Follow-up con nota "Enviar 3-5 días después si no responde"
-- [ ] 4.5 Botón "Launch to Meta" en dashboard que abre `<LaunchAnimation>`
-- [ ] 4.6 Estado vacío y estados de loading por sección
+- [x] 4.1 Componente `<HeroSkusSection>` con tags por SKU prioritario
+- [x] 4.2 Componente `<AdGallery>` agrupado por hero SKU, 9 ads con `variant_label` visible, lazy load
+- [x] 4.3 Componente `<InfluencerCard>` con avatar, handle, métricas, match_score, botón "Ver DMs"
+- [x] 4.4 `<DmPanel>` expandible con dos tabs (Initial / Follow-up), cada uno con su mensaje + botón "Copiar"; tab Follow-up con nota "Enviar 3-5 días después si no responde"
+- [x] 4.5 Botón "Launch to Meta" en dashboard que abre `<LaunchAnimation>`
+- [x] 4.6 Estado vacío y estados de loading por sección
 
 ### T1+T2 — Orquestación end-to-end
-- [ ] 4.7 Wizard de onboarding dispara: catalog upload → brief parse → Strategy automáticamente
-- [ ] 4.8 Strategy completado dispara automáticamente: Creative Engine + Influencer Matching en paralelo
-- [ ] 4.9 Reconexión SSE robusta: cliente recupera el run activo al recargar
-- [ ] 4.10 Indicador global de "X agentes trabajando" en el header
+- [x] 4.7 Wizard de onboarding dispara: catalog upload → brief parse → Strategy automáticamente
+- [x] 4.8 Strategy completado dispara automáticamente: Creative Engine + Influencer Matching en paralelo
+- [x] 4.9 Reconexión SSE robusta: cliente recupera el run activo al recargar
+- [x] 4.10 Indicador global de "X agentes trabajando" en el header
 
 ## 5. Ola 4 — Demo polish y plan B
 
 ### T5 — Pre-cache de demo
-- [ ] 5.1 Definir el catálogo de demo (10-15 SKUs reales con fotos buenas) y el brief de demo
-- [ ] 5.2 Correr el flujo completo end-to-end sobre el seed y verificar todos los outputs
-- [ ] 5.3 Snapshot de los `agent_events` de la corrida para replay determinista en demo
-- [ ] 5.4 Modo "demo replay" que reproduce los eventos snapshot con timing original
+- [x] 5.1 Definir el catálogo de demo (10-15 SKUs reales con fotos buenas) y el brief de demo
+- [ ] 5.2 Correr el flujo completo end-to-end sobre el seed y verificar todos los outputs **(bloqueado: requiere corrida manual E2E con servicios externos y verificación humana)**
+- [x] 5.3 Snapshot de los `agent_events` de la corrida para replay determinista en demo
+- [x] 5.4 Modo "demo replay" que reproduce los eventos snapshot con timing original
 
 ### T1 — Polish visual
-- [ ] 5.5 Animaciones de aparición de cards (Framer Motion o equivalente)
-- [ ] 5.6 Microcopy en español pulido en todos los empty states y labels
-- [ ] 5.7 Estados de error visibles pero no asustadores
+- [x] 5.5 Animaciones de aparición de cards (Framer Motion o equivalente)
+- [x] 5.6 Microcopy en español pulido en todos los empty states y labels
+- [x] 5.7 Estados de error visibles pero no asustadores
 
 ### Todos — Smoke test final
-- [ ] 5.8 Correr el flujo completo en deploy de Vercel con el catálogo de demo
-- [ ] 5.9 Validar que no hay requests salientes a Meta
-- [ ] 5.10 Validar que el bus replay funciona si SSE se cae mid-demo
-- [ ] 5.11 Plan B: video pre-grabado de la demo guardado offline
-- [ ] 5.12 Backup de DB con seed completo (catálogo + brief + influencers)
+- [ ] 5.8 Correr el flujo completo en deploy de Vercel con el catálogo de demo **(bloqueado: requiere deploy real y validación manual en Vercel)**
+- [ ] 5.9 Validar que no hay requests salientes a Meta **(bloqueado: requiere inspección de red en corrida real)**
+- [ ] 5.10 Validar que el bus replay funciona si SSE se cae mid-demo **(bloqueado: requiere prueba manual de desconexión en sesión real)**
+- [ ] 5.11 Plan B: video pre-grabado de la demo guardado offline **(bloqueado: requiere grabación manual fuera del repo)**
+- [ ] 5.12 Backup de DB con seed completo (catálogo + brief + influencers) **(bloqueado: requiere acceso operativo a DB/proyecto Supabase)**
