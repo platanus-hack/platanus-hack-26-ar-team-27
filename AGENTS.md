@@ -77,15 +77,15 @@ pnpm -v   # debe ser >= 10
 # Install
 pnpm install
 
-# Sincronizar env desde Vercel (recomendado — no copies/pegues secrets manualmente)
-pnpm dlx vercel@latest login          # primera vez: login con la cuenta agregada al proyecto
+# Env vars (.env.local)
+# Si en tu compu las cargaste manualmente o ya están: saltá este paso.
+# Si NO las tenés todavía:
+pnpm dlx vercel@latest login
 pnpm dlx vercel@latest link --yes \
     --project retail-growth-engine \
     --scope fardenghis-projects
 pnpm dlx vercel@latest env pull .env.local
-
-# Alternativa si NO tenés acceso al Vercel: cp .env.local.example .env.local
-# y pedile las keys al admin del proyecto por canal seguro.
+# Alternativa: cp .env.local.example .env.local y pedile las keys al admin.
 
 # Smoke test
 pnpm typecheck   # debe pasar limpio
@@ -305,26 +305,62 @@ supabase/migrations/                         append-only por track
 
 ---
 
-## §6 — Workflow de PRs
+## §6 — Workflow de PRs (checkpoint-based + self-merge)
 
-### Ritmo
+### Ritmo: por checkpoints, NO por tiempo
 
-- PR a `main` cada **2-3 horas** si tenés algo verde.
-- No esperar al final del día. Merges chicos = conflicts chicos.
+Mergeás a `main` cuando completás una **unidad coherente** del trabajo. No es "cada 2-3 horas" — puede ser 30 minutos si terminaste algo chico, puede ser 4 horas si una pieza grande no llega a estado verde antes.
 
-### Checklist antes de abrir PR
+Ejemplos de checkpoints válidos por track:
+
+- `track/1-agents-data`:
+  - Event bus funcionando end-to-end (publish + SSE + replay).
+  - Strategy Agent corriendo y persistiendo en `strategies`.
+  - Catalog parser endpoint completo.
+  - Brief parser endpoint completo.
+  - Influencer Matching + DM Generator entregando 5 matches válidos.
+  - Seed de influencers cargado en DB.
+- `track/2-frontend-launch`:
+  - Onboarding wizard funcional (3 pasos).
+  - `<AgentStage>` consumiendo SSE real.
+  - `<AdGallery>` rendereando creatives.
+  - `<DmPanel>` con tabs Initial/Follow-up.
+  - `<LaunchAnimation>` + endpoint mock funcionando.
+  - Deploy de Vercel verde con smoke test.
+- `track/3-creative`:
+  - Pipeline mock end-to-end (un SKU → 9 creatives persistidos).
+  - Copy gen con los 3 frameworks distintos.
+  - Streaming de `artifact.created` por output.
+
+**Checkpoint NO válido:** "voy a mitad del task X". Si X no está completo, no mergees. Excepción: spike o WIP detrás de feature flag.
+
+### Auto-merge: vos mergeás tu propio PR
+
+No esperás review de nadie. Tu workflow:
 
 ```bash
-git pull --rebase origin main
-pnpm typecheck   # debe pasar
-pnpm build       # si tocaste algo de Next.js
-pnpm dev         # smoke check local
+# Estás en tu rama, terminaste un checkpoint
+git checkout track/N-...
+pnpm typecheck                 # debe pasar
+pnpm build                     # si tocaste Next.js
+pnpm dev                       # smoke check local rápido
+git pull --rebase origin main  # poné tu rama al día
+
+# Mergear vos mismo a main
+git checkout main
+git pull origin main
+git merge --ff-only track/N-...   # si fast-forward funciona, perfecto
+# Si no es fast-forward (alguien más mergeó algo en main):
+#   git merge --no-ff track/N-...  (genera commit de merge)
+git push origin main
+
+# Volver a tu rama y seguir
+git checkout track/N-...
+git rebase main
+git push --force-with-lease origin track/N-...
 ```
 
-### Quién mergea
-
-- Tu propio PR si CI verde.
-- **Excepción:** PRs que tocan archivos de §4 (congelados) requieren 1 review de otro track.
+**Excepción:** si tu checkpoint toca archivos congelados (§4), avisá al grupo y esperá 5 minutos para que otro track pueda objetar antes de mergear.
 
 ### Si rompés `main`
 
