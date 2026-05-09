@@ -1,36 +1,39 @@
-# AGENTS.md — Cómo trabajar en paralelo en 5 computadoras
+# AGENTS.md — Cómo trabajar en paralelo en 3 computadoras
 
 > **Si sos un agente (humano o LLM) leyendo esto: este archivo es tu runbook.
 > Seguilo de arriba hacia abajo.**
 >
-> Si te saltás los pasos vas a romper la rama de los otros 4. La regla #1 es
+> Si te saltás los pasos vas a romper la rama de los otros 2. La regla #1 es
 > reclamar tu track públicamente **antes** de empezar a codear.
+>
+> El proyecto se reparte en **3 tracks** que agrupan los 5 sub-tracks del plan
+> original (T1-T5) según afinidad de dominio. Ver §3.
 
 ---
 
 ## TL;DR
 
 1. Claim tu track editando la tabla **§1** y haciendo push.
-2. Setup máquina (§2): clone + `pnpm install` + `.env.local`.
-3. `git checkout track/N-...` y empezá tus tasks (§3).
-4. Respetá los **contratos congelados** (§4) y **carpetas de tu track** (§5).
-5. PR a `main` cada 2-3 hrs (§6).
+2. Setup máquina (§2): clone + `pnpm install` + `vercel env pull`.
+3. `git checkout track/N-...`.
+4. **Ejecutar `/opsx:apply`** (§3) — único workflow autorizado para implementar tasks.
+   No codees ad-hoc; el plan vive en `openspec/changes/retail-growth-engine-mvp/`.
+5. Respetá los **contratos congelados** (§4) y **carpetas de tu track** (§5).
+6. PR a `main` cada 2-3 hrs (§6).
 
 ---
 
 ## §1 — Claim tu track (OBLIGATORIO antes de codear)
 
-Las 5 ramas ya están creadas en remoto. **Para reclamar una**, abrís este archivo, ponés tu nombre en la fila correspondiente, commiteás y pusheás. **El push es el lock**: el primero que pushee gana.
+Las 3 ramas ya están creadas en remoto. **Para reclamar una**, abrís este archivo, ponés tu nombre en la fila correspondiente, commiteás y pusheás. **El push es el lock**: el primero que pushee gana.
 
 ### Tabla de asignaciones — ¡EDITAME!
 
-| Track | Branch | Owner | Started At (ISO) | Status |
-|---|---|---|---|---|
-| 1 | `track/1-frontend` | UNCLAIMED | — | open |
-| 2 | `track/2-agents` | UNCLAIMED | — | open |
-| 3 | `track/3-data` | UNCLAIMED | — | open |
-| 4 | `track/4-creative` | UNCLAIMED | — | open |
-| 5 | `track/5-launch-devops` | UNCLAIMED | — | open |
+| Track | Branch | Cubre | Owner | Started At (ISO) | Status |
+|---|---|---|---|---|---|
+| 1 | `track/1-agents-data` | T2 + T3 (event bus, agents, catalog, brief, scraping seed) | UNCLAIMED | — | open |
+| 2 | `track/2-frontend-launch` | T1 + T5 (UI completa, agent stage, launch mock, devops, demo polish) | UNCLAIMED | — | open |
+| 3 | `track/3-creative` | T4 (Creative Engine: image-gen wrapper + copy gen) | UNCLAIMED | — | open |
 
 ### Procedimiento de claim (copy-paste)
 
@@ -93,117 +96,158 @@ Si cualquiera de estos pasos falla en `main` recién clonado: avisalo en el grup
 
 ---
 
-## §3 — Tus tasks por track
+## §3 — Implementar tus tasks (OBLIGATORIO usar `/opsx:apply`)
 
-**Ubicación oficial:** `openspec/changes/retail-growth-engine-mvp/tasks.md`. Las tareas están agrupadas en olas. Cada track ya tiene asignación tentativa al lado del task.
+**Ubicación oficial del plan:** `openspec/changes/retail-growth-engine-mvp/`.
+
+### Regla dura
+
+**No codees a mano.** El único workflow autorizado para implementar tareas en este proyecto es el comando `/opsx:apply` (OpenSpec Apply), que:
+
+1. Lee `proposal.md`, `design.md`, los `specs/*/spec.md` y `tasks.md` de la change activa.
+2. Toma el siguiente task pendiente (`- [ ]`) y lo implementa respetando los contratos.
+3. Marca el checkbox como `- [x]` cuando el task está hecho y verificado.
+4. Hace commit con un mensaje que cita el task aplicado.
+
+**Por qué es obligatorio:**
+- Mantiene `tasks.md` como única fuente de verdad del estado del proyecto.
+- Garantiza que cada feature implementada está cubierta por un spec testeable.
+- Previene drift entre lo que documentamos y lo que está en el código.
+- Permite al resto del equipo ver progreso real al pull `main` (los `[x]` son visibles).
+
+### Cómo correrlo
+
+```bash
+# 1. Asegurate de estar en tu rama y al día con main
+git checkout track/N-...
+git pull --rebase origin main
+
+# 2. Disparar el workflow OpenSpec apply
+/opsx:apply
+```
+
+Cuando se te pregunte qué tasks aplicar, **scope a los de tu track** (los códigos `T1...T5` en `tasks.md` mapean según la tabla de §1):
+
+- `track/1-agents-data` → tasks marcados como **T2** o **T3**.
+- `track/2-frontend-launch` → tasks marcados como **T1** o **T5**.
+- `track/3-creative` → tasks marcados como **T4**.
+
+### Si encontrás algo que no está en tasks.md
+
+No lo agregues por tu cuenta:
+1. Si es un task chico que descubriste haciendo otro: agregalo a `tasks.md` con `- [ ] X.Y descripción` en la sección que corresponda y commiteá ese cambio aparte antes de implementarlo.
+2. Si es algo grande (cambia un spec, un contrato, una decisión de design): conversación grupal — **no podés correr `/opsx:apply` para implementar algo que no esté en specs/design**.
+
+### Resumen funcional por track
 
 ### Resumen por track
 
-#### Track 1 — Frontend + Agent UX (rama: `track/1-frontend`)
+> Cada track agrupa varios sub-tracks del plan original (T1-T5 en `tasks.md`).
+> Los códigos T1/T2/T3/T4/T5 se mantienen en `tasks.md` para no reescribirlo;
+> mapeá tu rama a esos códigos:
+>
+> - `track/1-agents-data` → **T2 + T3**
+> - `track/2-frontend-launch` → **T1 + T5**
+> - `track/3-creative` → **T4**
 
-**Mision:** la UI completa, incluyendo el **stage de agentes trabajando** (design D15).
+#### Track 1 — Agents + Data (rama: `track/1-agents-data`)
 
-Tasks principales (ver tasks.md §2.18-2.25, §4.1-4.10, §5.5-5.7):
-- Onboarding wizard (3 pasos: catálogo → brief → confirmar)
-- `<AgentStage>` con 4 cards horizontales y borde gradient animado en activo
-- `<LiveThinking>`: tokens streaming + tool chips
-- Hook `useAgentStream(projectId)` con SSE + dedupe + reconect
-- `<AdGallery>`, `<InfluencerCard>`, `<DmPanel>` (tabs initial/follow-up)
-- Animaciones de artifacts emergiendo (Framer Motion `layoutId`)
-- Cookie `rge_project_id` se crea automáticamente en first hit (ver `lib/project.ts`)
+**Misión:** el cerebro + todo lo que entra al sistema. Event bus, Strategy Agent, Influencer Matching + DM Generator, parsing de catálogo y brief, y scraping de seed de influencers.
 
-**Lo que ya tenés:**
-- `src/components/agents/agent-stage.tsx` (stub)
-- `src/components/agents/use-agent-stream.ts` (stub con TODO)
-- `src/components/launch/launch-animation.tsx` (stub)
-- `src/lib/utils.ts` con `cn()`
-- `tailwind.config.ts` con `theme.colors.agent.{strategy,creative,influencer,launch}` y `animate-border-flow` / `animate-fade-up`
+**Tasks consolidados** (referencia a `openspec/changes/retail-growth-engine-mvp/tasks.md`):
 
-**Mocks que podés usar mientras T2/T3/T4 no terminan:**
-- Endpoints devuelven 501 con `{ track: 'TN' }` — capturá ese status y mostrá placeholder.
-- O setear `MOCK_*=true` en `.env.local` (ver §7).
+Del bloque T2 (agentes + bus): §2.1-2.5, §3.1-3.7, §3.14-3.22.
+Del bloque T3 (data + seed): §2.6-2.10, §2.11-2.17.
 
-#### Track 2 — Backend orquestación + Strategy + Influencer agents + Event bus (rama: `track/2-agents`)
+**Orden recomendado de ataque:**
 
-**Mision:** el cerebro. Strategy Agent, Influencer Matching + DM Generator, y **el event bus** (que es bloqueante para T1).
+1. **PRIMERO Y BLOQUEANTE PARA OTROS TRACKS:** event bus funcional.
+   - `lib/events/publish.ts` (ya existe).
+   - `app/api/stream/[projectId]/route.ts` con SSE + Postgres LISTEN (usar `getDirectSql()` de `lib/db/pg.ts`).
+   - Replay por `?since=<event_id>` desde `agent_events`.
+2. **Día 1 mañana en paralelo (corre solo, larga corrida ~1hr):** scraping seed.
+   - Curar `scripts/seed/seed-handles.csv` (100 handles, 20 × 5 categorías).
+   - Implementar `scripts/seed/scrape-influencers.ts` con Playwright.
+   - Generar embeddings + batch insert.
+3. Catalog parser (`POST /api/catalog`) y brief parser (`POST /api/brief` con TXT/MD/PDF + GPT-4o-mini).
+4. Strategy Agent (LangGraph + Claude Sonnet 4.5):
+   - Tools: `get_products`, `get_brand_brief`.
+   - Streaming via Vercel AI SDK → `publishEvent('agent.thinking')`.
+   - Output validado con `StrategyOutputSchema`.
+5. Influencer Matching + DM Generator:
+   - Cosine sim ICP↔embedding (pgvector).
+   - DMs initial + follow_up anclados a `bio`/`recent_post_summary`.
+   - Validador anti-alucinación.
 
-Tasks principales (ver tasks.md §2.1-2.5, §3.1-3.7, §3.14-3.22):
-- **PRIMERO Y MÁS URGENTE:** event bus funcional. T1 te espera para integrar.
-  - `lib/events/publish.ts` (ya existe, solo úsalo).
-  - `app/api/stream/[projectId]/route.ts` con SSE + Postgres LISTEN.
-  - Replay por `?since=<event_id>` desde tabla `agent_events`.
-- Strategy Agent (LangGraph + Claude Sonnet 4.5):
-  - Tools: `get_products`, `get_brand_brief`.
-  - Streaming de tokens via Vercel AI SDK → publishEvent('agent.thinking').
-  - Output validado con `StrategyOutputSchema` antes de persistir.
-- Influencer Matching:
-  - Embedding del ICP → cosine sim contra `influencers.embedding` (pgvector).
-  - Top 5 con `match_reasoning`.
-  - DM Generator: **initial + follow_up** (D14) anclados a `bio` + `recent_post_summary`.
-  - Validador anti-alucinación post-LLM.
+**Lo que ya tenés scaffolded:**
+- `src/lib/events/{types,publish}.ts` (CONTRATO CONGELADO — no editar `types.ts`).
+- `src/lib/db/pg.ts` (postgres clients pooled + direct para LISTEN).
+- `src/lib/agents/{strategy,influencer,creative}/index.ts` (stubs con TODO — solo edita strategy/influencer).
+- `src/app/api/{catalog,brief,strategy,influencers,stream/[projectId]}/route.ts` (todos devuelven 501).
+- `scripts/seed/scrape-influencers.ts` (stub Playwright con TODO).
+- `scripts/seed/{seed-handles,demo-catalog}.csv`.
+- Migration 001 ya tiene `agent_events` + trigger `notify_agent_event` aplicada en Supabase.
+- `src/lib/db/schema.ts` con todos los zod schemas.
 
-**Lo que ya tenés:**
-- `src/lib/events/types.ts` (CONTRATO CONGELADO — no editar).
-- `src/lib/events/publish.ts` (publisher listo).
-- `src/lib/agents/{strategy,influencer}/index.ts` (stubs con TODO).
-- `src/app/api/{strategy,influencers,stream/[projectId]}/route.ts` (devuelven 501).
-- Migration 001 ya tiene `agent_events` + trigger `notify_agent_event`.
+#### Track 2 — Frontend + Launch + DevOps (rama: `track/2-frontend-launch`)
 
-#### Track 3 — Data: catalog + brief + scraping seed (rama: `track/3-data`)
+**Misión:** todo lo que el jurado ve. UI completa con el stage de agentes trabajando, dashboard de outputs, launch mock, deploys y demo polish.
 
-**Mision:** todo lo que entra al sistema. CSV de catálogo, brand brief (form + upload), y los 100 creadores seed.
+**Tasks consolidados:**
 
-Tasks principales (ver tasks.md §2.6-2.10, §2.11-2.17):
-- `POST /api/catalog` parser CSV con papaparse.
-- `POST /api/brief` con TXT/MD/PDF (pdf-parse) + parsing semántico GPT-4o-mini.
-- **Día 1 mañana — bloqueante para T2 (matching):**
-  - Curar `scripts/seed/seed-handles.csv` (100 handles, 20 × 5 categorías).
-  - Implementar `scripts/seed/scrape-influencers.ts` con Playwright.
-  - Generar embeddings y batch insert en Supabase.
+Del bloque T1 (frontend): §2.18-2.25, §4.1-4.10, §5.5-5.7.
+Del bloque T5 (launch + devops + demo): §2.29-2.33, §5.1-5.12.
 
-**Lo que ya tenés:**
-- `src/app/api/{catalog,brief}/route.ts` (stubs 501).
-- `scripts/seed/scrape-influencers.ts` (stub con TODO).
-- `scripts/seed/seed-handles.csv` (header con criterios documentados).
-- `scripts/seed/demo-catalog.csv` (12 SKUs ficticios para probar parser ahora).
-- `src/lib/db/schema.ts` con `BrandBriefParsedSchema`.
+**Orden recomendado de ataque:**
 
-**Importante:** sin tu seed de influencers, T2 no puede correr matching real. **Bloqueá tiempo el día 1 mañana para esto.**
+1. UI shell + onboarding wizard (3 pasos: catálogo → brief → confirmar). Mientras Track 1 termina event bus, podés mockear el SSE devolviendo eventos canned.
+2. `<AgentStage>` con 4 cards horizontales + borde gradient animado en activo (D15).
+3. Hook `useAgentStream(projectId)` con SSE + dedupe + reconnect.
+4. `<LiveThinking>` con tokens streaming + tool chips.
+5. `<AdGallery>`, `<InfluencerCard>`, `<DmPanel>` (tabs Initial/Follow-up).
+6. Animaciones de artifacts emergiendo (Framer Motion `layoutId`).
+7. `<LaunchAnimation>` con 4 pasos (3-5s c/u, accent emerald) + `POST /api/campaigns` (mock, NO llamar a `graph.facebook.com`).
+8. Vercel deploy + cron warm-up + smoke tests cada 3-4 hrs.
+9. Demo polish: pre-cache snapshot de `agent_events` para replay determinista; plan B video.
 
-#### Track 4 — Creative Engine (rama: `track/4-creative`)
+**Lo que ya tenés scaffolded:**
+- `src/app/{layout,page,globals.css}.tsx` (root stubs).
+- `src/components/{agents/agent-stage,agents/use-agent-stream,launch/launch-animation,ui/button}.tsx` (stubs con TODO).
+- `src/lib/utils.ts` con `cn()`, `src/lib/project.ts` con cookie session.
+- `tailwind.config.ts` con `theme.colors.agent.{strategy,creative,influencer,launch}` + animations `border-flow` y `fade-up`.
+- `components.json` configurado para shadcn — agregá lo que necesites con `pnpm dlx shadcn@latest add <component>`.
+- `src/app/api/campaigns/route.ts` (stub 501 — implementalo vos).
 
-**Mision:** generar 9 ads por hero SKU (3 imágenes × 3 copys).
+**Mocks para no bloquearte mientras Track 1/Track 3 no terminan:**
+- Endpoints upstream devuelven 501 con `{ track: 'TN' }` — capturá ese status y mostrá placeholder.
+- Setear `MOCK_STRATEGY=true` y `MOCK_INFLUENCER=true` en `.env.local`.
 
-Tasks principales (ver tasks.md §2.26-2.28, §3.8-3.13):
-- Wrapper de Replicate Flux Kontext con timeout y retry simple.
-- 3 estilos de imagen por SKU: `lifestyle | context | comparative`.
-- 3 frameworks de copy: `PAS | AIDA | curiosity` con GPT-4o-mini.
-- Manejo de SKU sin imagen: skip image-gen, copy-only.
-- Emitir `artifact.created` por cada output (NO batch al final).
-- Respetar `MOCK_IMAGE_GEN=true` con `pickMockImage()` de `lib/mocks/images.ts`.
+#### Track 3 — Creative Engine (rama: `track/3-creative`)
 
-**Lo que ya tenés:**
-- `src/lib/agents/creative/index.ts` (stub).
+**Misión:** pipeline de generación de ads. 9 ads por hero SKU (3 imágenes × 3 copys).
+
+**Tasks consolidados:**
+
+Del bloque T4: §2.26-2.28, §2.28a, §3.8-3.13.
+
+**Orden recomendado:**
+
+1. Implementar wrapper `generateImage()` en `src/lib/agents/creative/image-gen.ts` (ya existe el archivo). Default `MOCK_IMAGE_GEN=true` ya devuelve placeholders Unsplash — empezá probando que la pipeline corre end-to-end con mocks.
+2. Generador de prompts: 3 estilos por SKU (`lifestyle | context | comparative`) usando brief + producto.
+3. Generador de copy: GPT-4o-mini, 3 frameworks (`PAS | AIDA | curiosity`) por imagen.
+4. `POST /api/creatives`: por cada hero SKU recibido, generar 9 ads en paralelo (las 3 imgs en paralelo dentro de un mismo SKU).
+5. Emitir `artifact.created` al bus por cada output (NO batch al final) usando `publishEvent()`.
+6. Persistir cada output en `creatives` con `status='ready'` o `'failed'`.
+7. Manejo de SKU sin imagen: skip image-gen, copy-only.
+8. **(Post-MVP / cuando se decida)** integrar modelo NVIDIA gratis en `generateImage()` reemplazando el TODO. El resto de la pipeline NO debe cambiar.
+
+**Lo que ya tenés scaffolded:**
+- `src/lib/agents/creative/{index,image-gen}.ts` (image-gen tiene mock funcional + TODO para NVIDIA).
 - `src/app/api/creatives/route.ts` (stub 501).
-- `src/lib/mocks/images.ts` con 6 placeholders Unsplash.
+- `src/lib/mocks/images.ts` con 6 placeholders Unsplash + `pickMockImage(seed)`.
 - Schemas: `CreativeSchema`, `CopyFrameworkEnum`, `ImageStyleEnum`.
 
-#### Track 5 — DM finishing + Launch mock + DevOps + demo seed (rama: `track/5-launch-devops`)
-
-**Mision:** el último paso del flujo (launch a Meta mockeado), polish de DMs, deploy y plan B de demo.
-
-Tasks principales (ver tasks.md §2.29-2.33, §3.18 colab, §5.1-5.12):
-- `POST /api/campaigns` con animación de 4 pasos (3-5s c/u).
-- **NO** llamar a `graph.facebook.com` (verificable con request inspector).
-- Vercel deploy + cron warm-up cada 5min.
-- Smoke tests cada 3-4 hrs.
-- Pre-cache de demo: correr el flujo completo sobre seed y snapshot de `agent_events` para replay determinista.
-- Plan B: video pre-grabado de la demo guardado offline.
-- Asistir a T2 con DM Generator follow-up (D14) y validador anti-alucinación.
-
-**Lo que ya tenés:**
-- `src/app/api/campaigns/route.ts` (stub 501).
-- `src/components/launch/launch-animation.tsx` (stub).
+**Mocks para no bloquearte:** dejá `MOCK_IMAGE_GEN=true` (default) — pipeline corre completa sin créditos. Disable solo cuando el modelo NVIDIA esté integrado.
 
 ---
 
@@ -227,34 +271,34 @@ Las **dependencias** se agregan vía `pnpm add <pkg>` — eso modifica `package.
 ## §5 — Carpetas por track (no cruzarse)
 
 ```
-src/app/(dashboard)/                  T1
-src/app/page.tsx, layout.tsx          T1
-src/app/api/catalog/                  T3
-src/app/api/brief/                    T3
-src/app/api/strategy/                 T2
-src/app/api/influencers/              T2
-src/app/api/creatives/                T4
-src/app/api/campaigns/                T5
-src/app/api/stream/[projectId]/       T2
+src/app/page.tsx, layout.tsx, globals.css   track/2-frontend-launch
+src/app/(dashboard)/                         track/2-frontend-launch
+src/app/api/catalog/                         track/1-agents-data
+src/app/api/brief/                           track/1-agents-data
+src/app/api/strategy/                        track/1-agents-data
+src/app/api/influencers/                     track/1-agents-data
+src/app/api/stream/[projectId]/              track/1-agents-data
+src/app/api/creatives/                       track/3-creative
+src/app/api/campaigns/                       track/2-frontend-launch
 
-src/components/agents/                T1
-src/components/{catalog,brief}/       T1 (UI) + T3 (handlers)
-src/components/{creatives,influencers}/  T1
-src/components/launch/                T1 + T5
-src/components/ui/                    cualquiera (shadcn)
+src/components/agents/                       track/2-frontend-launch
+src/components/{catalog,brief}/              track/2-frontend-launch (UI) + track/1-agents-data (handlers)
+src/components/{creatives,influencers}/      track/2-frontend-launch
+src/components/launch/                       track/2-frontend-launch
+src/components/ui/                           cualquier track (shadcn primitives)
 
-src/lib/agents/strategy/              T2
-src/lib/agents/creative/              T4
-src/lib/agents/influencer/            T2 (+ T5 colab DM)
+src/lib/agents/strategy/                     track/1-agents-data
+src/lib/agents/influencer/                   track/1-agents-data
+src/lib/agents/creative/                     track/3-creative
 
-src/lib/events/                       BOOTSTRAP — congelado
-src/lib/db/                           append-only por track
-src/lib/supabase/                     bootstrap — toques mínimos
-src/lib/mocks/                        cualquiera (sumar mocks)
-src/lib/project.ts                    bootstrap — toques mínimos
+src/lib/events/                              BOOTSTRAP — congelado
+src/lib/db/                                  append-only (cualquier track puede sumar queries; nadie edita queries de otros)
+src/lib/supabase/                            bootstrap — toques mínimos
+src/lib/mocks/                               cualquier track (sumar mocks)
+src/lib/project.ts                           bootstrap — toques mínimos
 
-scripts/seed/                         T3
-supabase/migrations/                  append-only por track
+scripts/seed/                                track/1-agents-data
+supabase/migrations/                         append-only por track
 ```
 
 **Si tenés que tocar carpeta de otro track:** avisalo en el grupo, no abras PR sorpresa.
@@ -299,9 +343,9 @@ Mientras un track upstream no terminó, podés desbloquearte con flags:
 
 | Flag | Efecto | Owner del mock |
 |---|---|---|
-| `MOCK_IMAGE_GEN=true` | Replicate no se llama, devuelve placeholder | T4 |
-| `MOCK_STRATEGY=true` | Strategy devuelve `MOCK_STRATEGY_OUTPUT` | T2 |
-| `MOCK_INFLUENCER=true` | Matching devuelve primeros 5 del seed | T2 |
+| `MOCK_IMAGE_GEN=true` (default) | No se llama a ningún modelo de imagen; devuelve placeholder Unsplash | `track/3-creative` |
+| `MOCK_STRATEGY=true` | Strategy devuelve `MOCK_STRATEGY_OUTPUT` (canned) | `track/1-agents-data` |
+| `MOCK_INFLUENCER=true` | Matching devuelve primeros 5 del seed | `track/1-agents-data` |
 
 Setealos en tu `.env.local` local. Para deploy de Vercel: solo el sysadmin del proyecto los toca.
 
@@ -311,7 +355,7 @@ Si necesitás un mock nuevo: agregalo a `src/lib/mocks/` y documentalo en este A
 
 ## §8 — Smoke test del flujo end-to-end
 
-Cada **3-4 horas** una persona (tip: T5) corre esto en deploy de Vercel:
+Cada **3-4 horas** una persona (tip: `track/2-frontend-launch`) corre esto en deploy de Vercel:
 
 1. Abrir URL del deploy en navegador limpio (incognito).
 2. Subir `scripts/seed/demo-catalog.csv`.
