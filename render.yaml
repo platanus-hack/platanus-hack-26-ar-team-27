@@ -78,7 +78,7 @@ services:
         value: "false"
 
       - key: RESEARCH_PROVIDER
-        value: mock
+        value: anthropic_web
 
       - key: MAX_TOOL_ITERATIONS
         value: "8"

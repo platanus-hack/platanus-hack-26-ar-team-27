@@ -33,6 +33,7 @@ from app.services.diagnostic_service import get_company_or_404, require_confirme
 from app.services.dry_run_fixtures import mailgun_send_message as fx_mailgun_send
 from app.services.research.provider import (
     ResearchProvider,
+    SellerContext,
     TargetAccount,
     get_provider,
 )
@@ -42,9 +43,10 @@ class CampaignNotFound(Exception):
     pass
 
 
-def _score_account(account: TargetAccount, icp: str | None) -> tuple[float, str]:
+def _heuristic_score(account: TargetAccount, icp: str | None) -> tuple[float, str]:
+    """Fallback scoring used when the provider didn't return one (mock/csv)."""
     score = 0.5
-    rationale = []
+    rationale: list[str] = []
     if icp:
         keywords = [w.lower() for w in icp.split() if len(w) > 3]
         text = f"{account.industry or ''} {account.size_range or ''} {account.location or ''}".lower()
@@ -80,16 +82,31 @@ def research_targets(
 ) -> CampaignResearchResult:
     company = get_company_or_404(session, company_id)
     require_confirmed(company)
+    if not (company.business_context_summary or "").strip():
+        raise ValueError(
+            "company.business_context_summary is empty; cannot research prospects"
+        )
     settings = get_settings()
     provider = provider or get_provider(csv_path=csv_path)
-    accounts = provider.find_target_companies(icp=company.icp_description, limit=limit)
+    seller = SellerContext(
+        name=company.name,
+        business_context_summary=company.business_context_summary or "",
+        icp_description=company.icp_description,
+        target_company_count=company.target_company_count or 0,
+        internal_company_size_range=company.internal_company_size_range,
+    )
+    accounts = provider.find_target_companies(seller=seller, limit=limit)
     campaign = _ensure_campaign(session, company)
 
     target_rows: list[TargetCompany] = []
     contact_rows: list[Contact] = []
 
     for account in accounts:
-        score, rationale = _score_account(account, company.icp_description)
+        if account.score is not None:
+            score = max(0.0, min(1.0, float(account.score)))
+            rationale = account.score_rationale or "scored by provider"
+        else:
+            score, rationale = _heuristic_score(account, company.icp_description)
         selection = "candidate" if score >= settings.min_target_score else "below_threshold"
         target = TargetCompany(
             company_id=company.id,
@@ -101,6 +118,7 @@ def research_targets(
             score=score,
             score_rationale=rationale,
             selection_status=selection,
+            evidence_url=account.evidence_url,
             raw_payload=account.raw,
         )
         session.add(target)
@@ -108,7 +126,7 @@ def research_targets(
         target_rows.append(target)
         if selection != "candidate":
             continue
-        for contact in provider.find_contacts(account, limit=1):
+        for contact in provider.find_contacts(account, seller=seller, limit=1):
             row = Contact(
                 target_company_id=target.id,
                 full_name=contact.full_name,

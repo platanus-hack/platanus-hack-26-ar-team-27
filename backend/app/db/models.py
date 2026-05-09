@@ -272,6 +272,7 @@ class TargetCompany(Base, TimestampMixin):
     score: Mapped[float | None] = mapped_column(Float)
     score_rationale: Mapped[str | None] = mapped_column(Text)
     selection_status: Mapped[str] = mapped_column(String(32), default="candidate")
+    evidence_url: Mapped[str | None] = mapped_column(String(512))
     raw_payload: Mapped[dict | None] = mapped_column(JSON)
 
 

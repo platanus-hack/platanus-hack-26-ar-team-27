@@ -59,33 +59,45 @@ def _heuristic_diagnostic(payload: CompanyAnalyzeRequest) -> GtmDiagnostic:
 
 
 def analyze_company(session: Session, payload: CompanyAnalyzeRequest, *, force_heuristic: bool = False) -> Company:
+    """Run the GTM Diagnostic Agent on the user's input.
+
+    Uses the Anthropic-backed agent whenever an API key is configured. The
+    heuristic path only runs in local development with ``force_heuristic=True``
+    or when no key is set; in production the missing key surfaces as an
+    error rather than silently degrading the output.
+    """
     settings = get_settings()
     diagnostic: GtmDiagnostic
     agent_run_id: str | None = None
+    is_production = (settings.app_env or "").lower() not in ("local", "test")
 
+    if force_heuristic and is_production:
+        raise RuntimeError(
+            "force_heuristic is not allowed in production (APP_ENV != local/test)"
+        )
     use_anthropic = bool(settings.anthropic_api_key) and not force_heuristic
     if use_anthropic:
         from app.agents.gtm_diagnostic import build_agent
 
         runner = AgentRunner(get_global_registry())
-        try:
-            output = runner.run(
-                build_agent(),
-                user_input=payload.model_dump(mode="json"),
-                session=session,
-            )
-            diagnostic = GtmDiagnostic.model_validate(output)
-            agent_run_id = (
-                session.query(AgentRun)
-                .order_by(AgentRun.started_at.desc())
-                .filter(AgentRun.agent_name == "gtm-diagnostic")
-                .first()
-                .id
-            )
-        except Exception as exc:  # pragma: no cover - fallback path
-            logger.warning("agent failed, falling back to heuristic: %s", exc)
-            diagnostic = _heuristic_diagnostic(payload)
+        output = runner.run(
+            build_agent(),
+            user_input=payload.model_dump(mode="json"),
+            session=session,
+        )
+        diagnostic = GtmDiagnostic.model_validate(output)
+        agent_run_id = (
+            session.query(AgentRun)
+            .order_by(AgentRun.started_at.desc())
+            .filter(AgentRun.agent_name == "gtm-diagnostic")
+            .first()
+            .id
+        )
     else:
+        if is_production:
+            raise RuntimeError(
+                "ANTHROPIC_API_KEY is required in production for company analysis"
+            )
         diagnostic = _heuristic_diagnostic(payload)
 
     company = Company(

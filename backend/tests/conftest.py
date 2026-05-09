@@ -21,6 +21,8 @@ os.environ.setdefault("MAILGUN_WEBHOOK_SIGNING_KEY", "test-signing-key")
 os.environ.setdefault("PORKBUN_API_KEY", "test-pk")
 os.environ.setdefault("PORKBUN_SECRET_API_KEY", "test-sk")
 os.environ.setdefault("MAILGUN_API_KEY", "test-mg")
+# Tests use the deterministic mock research provider; never the live one.
+os.environ.setdefault("RESEARCH_PROVIDER", "mock")
 
 import app.db.models  # noqa: F401,E402  ensure mappers are registered
 from app.core.settings import get_settings  # noqa: E402

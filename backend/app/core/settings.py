@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     allow_demo_emails: bool = False
     default_from_local_part: str = "warmup"
 
-    research_provider: str = "mock"
+    research_provider: str = "anthropic_web"
     serpapi_api_key: str = ""
     tavily_api_key: str = ""
     apollo_api_key: str = ""
