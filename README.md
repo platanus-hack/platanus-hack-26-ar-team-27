@@ -14,100 +14,47 @@ team-27
 
 ---
 
-## What this project does
-
-Multi-agent Go-To-Market system for B2B startups: diagnoses the business,
-buys outbound domains, configures DNS + Mailgun, warms them up, researches
-prospects and sends personalized emails — all traceable in a database and
-**safe by default** (dry-run, hard caps, feature flags).
-
-A FastAPI surface and a Typer CLI orchestrate five agents (`GTM Diagnostic`,
-`Domain Purchase`, `DNS Configuration`, `Warmup Lite`, `Research & Send`)
-on top of a generic Anthropic-SDK runner with structured tool use. External
-side effects (Porkbun register, Mailgun create/send) flow through a single
-safety service that enforces feature flags, caps and audit logging before
-any tool runs. State persists in SQLite by default (Postgres-ready).
-
-See `docs/ARCHITECTURE.md` for diagrams, `docs/DEMO_RUNBOOK.md` for the
-hackathon demo script, and `docs/OPERATIONS.md` for runbooks.
-
-## Install
-
-```bash
-python3.11 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
-cp .env.example .env  # fill in keys when going beyond dry-run
-alembic upgrade head
-```
-
-## Run the API
-
-```bash
-uvicorn app.main:app --reload --port 8000
-curl http://localhost:8000/health
-```
-
-## Run the CLI
-
-Every dangerous command defaults to `--dry-run`. Pass `--execute` to opt
-in (and only after enabling the relevant `ALLOW_*` env flag).
-
-```bash
-python -m cli company analyze --input examples/company_input.json
-python -m cli domains plan --company-id <id>
-python -m cli domains purchase --company-id <id>            # dry-run
-python -m cli dns configure --company-id <id>               # dry-run
-python -m cli warmup run --company-id <id>                  # dry-run
-python -m cli campaign research --company-id <id>           # dry-run
-python -m cli campaign send --campaign-id <id>              # dry-run
-```
-
-### One-shot demo
-
-```bash
-python -m cli demo run-end-to-end --input examples/company_input.json
-```
-
-Runs the entire flow against mocked external services and prints each
-step. No real money is spent and no real emails are sent.
-
-## Run tests
-
-```bash
-pytest
-ruff check .
-```
-
-Tests use `respx` for HTTP mocking and a stub Anthropic client; nothing
-hits real APIs.
-
-## Enabling real actions (only when you understand the consequences)
-
-1. Set the relevant flag in `.env`:
-   - `ALLOW_DOMAIN_PURCHASES=true` for Porkbun registrations.
-   - `ALLOW_COLD_EMAILS=true` for Mailgun sends to non-seed contacts.
-   - `ALLOW_DEMO_EMAILS=true` for seed-list sends.
-2. Pass `execute=true` (API) or `--execute` (CLI) on the request.
-3. Hard caps still apply: max 2 domains per campaign, max USD 4 per
-   domain, suppression check mandatory, paused/burned domains cannot send.
-
 ## Repo layout
 
 ```
-app/
-  api/         FastAPI routers
-  agents/      Agent base + 5 concrete agents + runner
-  clients/     anthropic / porkbun / mailgun
-  core/        settings, safety, logging
-  db/          SQLAlchemy models + session
-  prompts/     System prompts per agent
-  schemas/     Pydantic request/response/agent schemas
-  services/    Business orchestration
-  tools/       Tool registry + tool implementations
-  workers/     Background helpers (sync for MVP)
-alembic/       Migrations
-tests/         unit + integration + fixtures
-docs/          ARCHITECTURE / API_RESEARCH / DEMO_RUNBOOK / OPERATIONS
-examples/      Demo fixtures
-cli.py         Typer CLI entrypoint
+backend/        Python FastAPI service (app, alembic, tests, docs, examples, cli)
+frontend/       (TBD) UI consuming the backend over HTTPS + SSE
+openspec/       Spec-driven change history for the project
+context/        Briefs and instructions used to generate this MVP
+render.yaml     Blueprint mapping the backend service onto Render (rootDir: backend)
 ```
+
+## Backend
+
+Multi-agent Go-To-Market system for B2B startups: diagnoses the business,
+plans outbound domains (uses a `owned_domain_pool` table to skip purchase),
+configures DNS + Mailgun, warms domains up, researches prospects and sends
+personalized emails — all traceable in Supabase Postgres and **safe by
+default** (dry-run, hard caps, feature flags, X-Api-Key auth).
+
+See **[`backend/README.md`](backend/README.md)** for install / run / test
+and **[`backend/docs/FRONTEND_API.md`](backend/docs/FRONTEND_API.md)** for the
+HTTP contract.
+
+### Quickstart
+
+```bash
+cd backend
+python3.11 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+cp .env.example .env       # then fill in keys
+alembic upgrade head
+uvicorn app.main:app --reload --port 8000
+```
+
+### Deploy
+
+Backend deploys to Render as a Python web service. See
+`backend/docs/FRONTEND_API.md` for the API contract and the `render.yaml`
+at repo root for the service definition.
+
+## Frontend
+
+Pendiente. Va a vivir en `frontend/`. El contrato HTTP (auth, SSE de
+diagnóstico, confirmación humana, endpoints post-confirmación) está
+documentado en `backend/docs/FRONTEND_API.md`.
