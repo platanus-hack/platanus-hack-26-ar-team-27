@@ -1,8 +1,5 @@
 # Tooling local (cada dev configura el suyo)
-.agent/
-.claude/
-.codex/
-.opencode/
+
 .playwright-mcp/
 .mcp.json
 
