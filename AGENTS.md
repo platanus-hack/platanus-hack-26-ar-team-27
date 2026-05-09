@@ -74,9 +74,15 @@ pnpm -v   # debe ser >= 10
 # Install
 pnpm install
 
-# Copiar env
-cp .env.local.example .env.local
-# Pegá las keys compartidas por el grupo (Supabase URL/keys, ANTHROPIC, OPENAI, REPLICATE).
+# Sincronizar env desde Vercel (recomendado — no copies/pegues secrets manualmente)
+pnpm dlx vercel@latest login          # primera vez: login con la cuenta agregada al proyecto
+pnpm dlx vercel@latest link --yes \
+    --project retail-growth-engine \
+    --scope fardenghis-projects
+pnpm dlx vercel@latest env pull .env.local
+
+# Alternativa si NO tenés acceso al Vercel: cp .env.local.example .env.local
+# y pedile las keys al admin del proyecto por canal seguro.
 
 # Smoke test
 pnpm typecheck   # debe pasar limpio
