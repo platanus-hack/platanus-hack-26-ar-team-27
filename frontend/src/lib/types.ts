@@ -8,6 +8,7 @@ export interface CompanyOut {
   internal_company_size_range: SizeRange | null;
   target_company_count: number;
   suggested_domain_names: string[] | null;
+  target_countries: string[] | null;
   confirmation_status: "pending_user_confirmation" | "confirmed" | "rejected";
   agent_run_id: string | null;
 }

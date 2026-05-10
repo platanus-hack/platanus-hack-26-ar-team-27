@@ -31,6 +31,7 @@ class SellerContext:
     icp_description: str | None
     target_company_count: int
     internal_company_size_range: str | None = None
+    target_countries: list[str] | None = None
 
 
 @dataclass

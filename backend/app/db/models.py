@@ -60,6 +60,7 @@ class Company(Base, TimestampMixin):
     internal_company_size_range: Mapped[str | None] = mapped_column(String(32))
     target_company_count: Mapped[int] = mapped_column(Integer, default=0)
     suggested_domain_names: Mapped[list | None] = mapped_column(JSON)
+    target_countries: Mapped[list | None] = mapped_column(JSON)
     source_files_metadata: Mapped[list | None] = mapped_column(JSON)
     confirmation_status: Mapped[str] = mapped_column(
         String(32), default="pending_user_confirmation", nullable=False

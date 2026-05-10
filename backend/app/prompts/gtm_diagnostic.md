@@ -12,6 +12,9 @@ matching the `GtmDiagnostic` schema:
 - internal_company_size_range (one of: solo, 2-10, 11-50, 51-200, 201+, unknown)
 - suggested_domain_names (3–5 plausible kebab-case domains derived from
   the company name; lowercase; no spaces)
+- target_countries (list of country names in Spanish where the seller
+  wants to find prospects; infer from the input. If the input does not
+  state a geography, return an empty list — never invent.)
 - notes (optional brief explanation)
 
 Rules:

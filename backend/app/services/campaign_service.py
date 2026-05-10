@@ -94,6 +94,7 @@ def research_targets(
         icp_description=company.icp_description,
         target_company_count=company.target_company_count or 0,
         internal_company_size_range=company.internal_company_size_range,
+        target_countries=list(company.target_countries) if company.target_countries else None,
     )
     accounts = provider.find_target_companies(seller=seller, limit=limit)
     campaign = _ensure_campaign(session, company)
