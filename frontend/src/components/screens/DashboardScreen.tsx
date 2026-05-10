@@ -135,8 +135,12 @@ export default function DashboardScreen({
 }: DashboardScreenProps) {
   const { company, domains, dnsResults, targets, contacts, drafts } = data;
   const gtmStrategy = company.gtm_strategy?.trim() || "";
+  const icpDescription = company.icp_description?.trim() || "";
 
-  const totalCost = domains.reduce((s, d) => s + (d.price_usd ?? 2.99), 0);
+  const FALLBACK_DOMAIN_PRICE = 3.49;
+  const priceFor = (price: number | null | undefined) =>
+    price && price > 0 ? price : FALLBACK_DOMAIN_PRICE;
+  const totalCost = domains.reduce((s, d) => s + priceFor(d.price_usd), 0);
   const totalDnsRecords = dnsResults.reduce((s, r) => s + r.records.length, 0);
   const repPoints = [32, 41, 56, 68, 79, 86, 92];
 
@@ -251,6 +255,12 @@ export default function DashboardScreen({
             <b>{drafts.length} emails personalizados</b> al ICP con
             investigación web en vivo.
           </p>
+          {icpDescription && (
+            <div className="summary-icp">
+              <span className="lbl">ICP</span>
+              <p>{icpDescription}</p>
+            </div>
+          )}
           <div className="summary-meta">
             <div className="meta-item d">
               <span className="lbl">Dominios</span>
@@ -390,7 +400,7 @@ export default function DashboardScreen({
                     <span className={`pill ${statusClass}`}>{statusLabel}</span>
                   </div>
                   <div className="dcost">
-                    comprado · <b>${(d.price_usd ?? 2.99).toFixed(2)}</b> · 1
+                    comprado · <b>${priceFor(d.price_usd).toFixed(2)}</b> · 1
                     año
                   </div>
                   <div className="drecs">

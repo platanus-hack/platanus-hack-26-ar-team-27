@@ -612,6 +612,9 @@ input, textarea, select { font-family: inherit; }
 .summary-card h2 { font-family:var(--serif); font-size:28px; font-weight:400; letter-spacing:-0.018em; margin:10px 0 14px; }
 .summary-card h2 em { font-style:italic; color:var(--research-ink); }
 .summary-card .description { font-size:14px; color:var(--fg-1); line-height:1.55; margin-bottom:20px; }
+.summary-icp { display:flex; flex-direction:column; gap:6px; padding:14px 16px; margin:0 0 18px; border:1px solid var(--diagnostic-line); background:var(--diagnostic-soft); border-radius:var(--r-lg); }
+.summary-icp .lbl { font-family:var(--mono); font-size:9.5px; letter-spacing:0.16em; text-transform:uppercase; color:var(--diagnostic-ink); }
+.summary-icp p { margin:0; font-size:13.5px; line-height:1.55; color:var(--fg-1); }
 .summary-meta { display:flex; gap:16px; flex-wrap:wrap; }
 .meta-item { display:flex; flex-direction:column; gap:4px; }
 .meta-item .lbl { font-family:var(--mono); font-size:9.5px; letter-spacing:0.16em; text-transform:uppercase; color:var(--fg-2); }
@@ -651,7 +654,8 @@ input, textarea, select { font-family: inherit; }
 .gtm-strategy-card p {
   margin:0;
   padding-top:6px;
-  max-width:900px;
+  width:100%;
+  max-width:none;
   font-size:14px;
   line-height:1.7;
   color:var(--fg-1);
