@@ -60,6 +60,7 @@ class Company(Base, TimestampMixin):
     internal_company_size_range: Mapped[str | None] = mapped_column(String(32))
     target_company_count: Mapped[int] = mapped_column(Integer, default=0)
     suggested_domain_names: Mapped[list | None] = mapped_column(JSON)
+    target_countries: Mapped[list | None] = mapped_column(JSON)
     source_files_metadata: Mapped[list | None] = mapped_column(JSON)
     confirmation_status: Mapped[str] = mapped_column(
         String(32), default="pending_user_confirmation", nullable=False
@@ -415,6 +416,30 @@ class AuditLog(Base, TimestampMixin):
     note: Mapped[str | None] = mapped_column(Text)
 
 
+class BlogPublication(Base, TimestampMixin):
+    """A static HTML blog generated for a company and deployed to Vercel."""
+
+    __tablename__ = "blog_publications"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    company_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
+    )
+    purchased_domain_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("purchased_domains.id", ondelete="SET NULL"), nullable=True
+    )
+    subdomain_host: Mapped[str | None] = mapped_column(String(255))
+    custom_url: Mapped[str | None] = mapped_column(String(512))
+    vercel_project_name: Mapped[str | None] = mapped_column(String(255))
+    vercel_deployment_id: Mapped[str | None] = mapped_column(String(128))
+    vercel_deployment_url: Mapped[str | None] = mapped_column(String(512))
+    html_content: Mapped[str | None] = mapped_column(Text)
+    title: Mapped[str | None] = mapped_column(String(512))
+    status: Mapped[str] = mapped_column(String(32), default="draft", nullable=False)
+    error_message: Mapped[str | None] = mapped_column(Text)
+    raw_response: Mapped[dict | None] = mapped_column(JSON)
+
+
 class OwnedDomainPool(Base, TimestampMixin):
     """Pre-owned domains the demo can pull from instead of purchasing.
 
@@ -435,6 +460,7 @@ class OwnedDomainPool(Base, TimestampMixin):
 __all__ = [
     "AgentRun",
     "AuditLog",
+    "BlogPublication",
     "Campaign",
     "CampaignPlan",
     "Company",

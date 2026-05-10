@@ -4,6 +4,7 @@ from __future__ import annotations
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.blog import router as blog_router
 from app.api.campaigns import router as campaigns_router
 from app.api.companies import public_router as companies_public_router
 from app.api.companies import router as companies_router
@@ -25,9 +26,9 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origins_list or ["*"],
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_origins=["*"],
+        allow_credentials=False,
+        allow_methods=["*"],
         allow_headers=["*"],
     )
 
@@ -47,6 +48,7 @@ def create_app() -> FastAPI:
     app.include_router(domains_router, dependencies=auth)
     app.include_router(warmup_router, dependencies=auth)
     app.include_router(campaigns_router, dependencies=auth)
+    app.include_router(blog_router, dependencies=auth)
 
     return app
 

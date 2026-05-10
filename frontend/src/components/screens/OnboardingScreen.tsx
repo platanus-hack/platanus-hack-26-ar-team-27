@@ -11,6 +11,7 @@ interface OnboardingScreenProps {
     campaign_target_company_count?: number;
     internal_company_size_range?: string;
     suggested_domain_names?: string[];
+    target_countries?: string[];
   }) => void;
   onBack: () => void;
   onEdit?: () => void;
@@ -31,6 +32,30 @@ export default function OnboardingScreen({
   const [targetCount, setTargetCount] = useState(company.target_company_count);
   type SizeRange = "solo" | "2-10" | "11-50" | "51-200" | "201+" | "unknown";
   const [sizeRange, setSizeRange] = useState<SizeRange>((company.internal_company_size_range ?? "2-10") as SizeRange);
+  const [countries, setCountries] = useState<string[]>(company.target_countries ?? []);
+  const [countryDraft, setCountryDraft] = useState("");
+
+  function addCountriesFromDraft() {
+    const tokens = countryDraft
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (tokens.length === 0) return;
+    onEdit?.();
+    setCountries((prev) => {
+      const merged = [...prev];
+      for (const t of tokens) {
+        if (!merged.some((c) => c.toLowerCase() === t.toLowerCase())) merged.push(t);
+      }
+      return merged;
+    });
+    setCountryDraft("");
+  }
+
+  function removeCountry(value: string) {
+    onEdit?.();
+    setCountries((prev) => prev.filter((c) => c !== value));
+  }
 
   const suggestedDomains = company.suggested_domain_names ?? [];
   const plannedDomains = suggestedDomains.slice(0, 2);
@@ -116,6 +141,49 @@ export default function OnboardingScreen({
                 ))}
               </select>
             </div>
+            <div className="row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
+              <span className="k">Países objetivo</span>
+              <div className="tags-row" style={{ width: "100%" }}>
+                {countries.map((c) => (
+                  <span
+                    key={c}
+                    className="tag"
+                    style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+                  >
+                    {c}
+                    <button
+                      type="button"
+                      onClick={() => removeCountry(c)}
+                      disabled={isLoading}
+                      style={{ background: "transparent", border: 0, cursor: "pointer", color: "var(--fg-2)", padding: 0, fontSize: 12, lineHeight: 1 }}
+                      aria-label={`Quitar ${c}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                <input
+                  value={countryDraft}
+                  onChange={(e) => {
+                    onEdit?.();
+                    setCountryDraft(e.target.value);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === ",") {
+                      e.preventDefault();
+                      addCountriesFromDraft();
+                    }
+                  }}
+                  onBlur={addCountriesFromDraft}
+                  placeholder={countries.length ? "Agregar otro…" : "Argentina, México, Brasil…"}
+                  disabled={isLoading}
+                  style={{ flex: 1, minWidth: 140, fontFamily: "var(--sans)", fontSize: 13, border: "1px solid var(--line)", borderRadius: 7, padding: "4px 8px", background: "var(--bg-1)", color: "var(--fg)" }}
+                />
+              </div>
+              <span style={{ fontSize: 11, color: "var(--fg-2)" }}>
+                Enter o coma para agregar. El research solo va a buscar prospects en estos países.
+              </span>
+            </div>
             {suggestedDomains.length > 0 && (
               <div className="row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
                 <span className="k">Dominios sugeridos</span>
@@ -178,13 +246,26 @@ export default function OnboardingScreen({
           <button
             className="btn btn-dark"
             disabled={isLoading}
-            onClick={() => onConfirm({
-              company_name: name,
-              icp_description: icp,
-              campaign_target_company_count: targetCount,
-              internal_company_size_range: sizeRange,
-              suggested_domain_names: suggestedDomains,
-            })}
+            onClick={() => {
+              const draftTokens = countryDraft
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+              const finalCountries = [...countries];
+              for (const t of draftTokens) {
+                if (!finalCountries.some((c) => c.toLowerCase() === t.toLowerCase())) {
+                  finalCountries.push(t);
+                }
+              }
+              onConfirm({
+                company_name: name,
+                icp_description: icp,
+                campaign_target_company_count: targetCount,
+                internal_company_size_range: sizeRange,
+                suggested_domain_names: suggestedDomains,
+                target_countries: finalCountries,
+              });
+            }}
           >
             {isLoading ? "Confirmando…" : "Iniciar agentes"} <span style={{ fontSize: 11, opacity: 0.7 }}>→</span>
           </button>

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from threading import Lock
 
+from app.tools.blog import tools as blog_tools
 from app.tools.gtm import tools as gtm_tools
 from app.tools.mailgun import tools as mailgun_tools
 from app.tools.porkbun import tools as porkbun_tools
@@ -23,4 +24,5 @@ def ensure_registered() -> None:
         mailgun_tools.register_all()
         warmup_tools.register_all()
         research_tools.register_all()
+        blog_tools.register_all()
         _registered = True

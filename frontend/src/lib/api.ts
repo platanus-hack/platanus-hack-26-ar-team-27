@@ -1,5 +1,6 @@
 import type {
   CompanyOut,
+  CampaignOut,
   DomainPlan,
   DomainPurchaseResult,
   PurchasedDomainOut,
@@ -136,6 +137,7 @@ export interface ConfirmPayload {
   campaign_target_company_count?: number;
   internal_company_size_range?: string;
   suggested_domain_names?: string[];
+  target_countries?: string[];
 }
 
 export async function confirmCompany(
@@ -210,6 +212,10 @@ export async function generateDrafts(
   return post<EmailDraftOut[]>(`/campaigns/${campaignId}/drafts`);
 }
 
+export async function getCampaign(campaignId: string): Promise<CampaignOut> {
+  return get<CampaignOut>(`/campaigns/${campaignId}`);
+}
+
 export async function approveDrafts(
   campaignId: string,
   approveAll = true
@@ -225,4 +231,39 @@ export async function sendCampaign(
   execute = false
 ): Promise<unknown> {
   return post(`/campaigns/${campaignId}/send`, { execute });
+}
+
+// ── Blog ──────────────────────────────────────────────────────────────
+export interface BlogPublicationOut {
+  id: string;
+  company_id: string;
+  custom_url: string | null;
+  vercel_deployment_url: string | null;
+  subdomain_host: string | null;
+  title: string | null;
+  status: string;
+  error_message?: string | null;
+}
+
+export async function publishBlog(
+  companyId: string,
+  execute = true
+): Promise<BlogPublicationOut> {
+  return post<BlogPublicationOut>(`/companies/${companyId}/blog/publish`, {
+    execute,
+  });
+}
+
+export async function getBlog(
+  companyId: string
+): Promise<BlogPublicationOut | null> {
+  const res = await fetch(`${API_BASE}/companies/${companyId}/blog`, {
+    headers: authHeaders(),
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    const err = await res.text().catch(() => res.statusText);
+    throw new Error(`GET /companies/${companyId}/blog → ${res.status}: ${err}`);
+  }
+  return res.json();
 }

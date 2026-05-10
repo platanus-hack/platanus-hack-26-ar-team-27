@@ -34,6 +34,7 @@ class GtmDiagnostic(BaseModel):
     campaign_target_company_count: int = Field(..., ge=0)
     internal_company_size_range: SizeRange = "unknown"
     suggested_domain_names: list[str] = Field(default_factory=list)
+    target_countries: list[str] = Field(default_factory=list)
     notes: str | None = None
 
     @field_validator("suggested_domain_names")
@@ -46,6 +47,16 @@ class GtmDiagnostic(BaseModel):
                 seen.append(d2)
         return seen
 
+    @field_validator("target_countries")
+    @classmethod
+    def _normalize_countries(cls, v: list[str]) -> list[str]:
+        seen: list[str] = []
+        for c in v:
+            c2 = (c or "").strip()
+            if c2 and c2 not in seen:
+                seen.append(c2)
+        return seen
+
 
 class CompanyConfirmRequest(BaseModel):
     company_name: str | None = None
@@ -53,6 +64,7 @@ class CompanyConfirmRequest(BaseModel):
     campaign_target_company_count: int | None = Field(default=None, ge=0)
     internal_company_size_range: SizeRange | None = None
     suggested_domain_names: list[str] | None = None
+    target_countries: list[str] | None = None
 
 
 class CompanyOut(BaseModel):
@@ -63,6 +75,7 @@ class CompanyOut(BaseModel):
     internal_company_size_range: str | None
     target_company_count: int
     suggested_domain_names: list[str] | None = None
+    target_countries: list[str] | None = None
     confirmation_status: str
     agent_run_id: str | None = None
 

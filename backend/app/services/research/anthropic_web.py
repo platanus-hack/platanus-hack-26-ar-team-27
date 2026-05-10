@@ -51,9 +51,24 @@ Reglas duras:
 - No incluyas a la propia empresa del usuario, ni a competidores
   obvios del usuario, ni a ofertas de servicios — solo a clientes
   potenciales.
+- Si el payload incluye `target_countries`, TODAS las empresas devueltas
+  deben tener su sede u operación principal en alguno de esos países.
+  Las que no encajen geográficamente, descartalas (aunque calcen en ICP).
 - Score 0.0 a 1.0 = qué tan buen prospect es para el seller específico.
   Justificá brevemente en `score_rationale`.
 - `size_range` SOLO puede ser uno de: solo, 2-10, 11-50, 51-200, 201+, unknown.
+
+Sesgo de selección (cuando el ICP lo permita):
+- Priorizá startups early-stage (pre-seed, seed, Series A) con sitio web
+  público, equipo pequeño y founders alcanzables. Son las empresas con
+  más probabilidad de responder un cold outbound bien segmentado.
+- Como referencia del *tipo* de prospect ideal cuando el ICP no
+  contradice: startups con perfil similar a Big Sur Energy, Numia,
+  Autonomy o Karai (https://karai-fardenghis-projects.vercel.app/) —
+  o sea, equipos chicos, producto en MVP/early-traction, foco en un
+  vertical claro, presencia digital ligera pero verificable.
+- Si el ICP del seller pide otra cosa (enterprise, vertical específico,
+  geografía concreta), el ICP gana sobre este sesgo.
 
 Output: cuando termines, respondé con UN solo objeto JSON con esta forma:
 
@@ -147,6 +162,13 @@ class AnthropicWebResearchProvider:
     def find_target_companies(
         self, *, seller: SellerContext, limit: int
     ) -> list[TargetAccount]:
+        countries = list(seller.target_countries or [])
+        countries_clause = (
+            f" Limitá los resultados a empresas con sede u operación principal en: "
+            f"{', '.join(countries)}."
+            if countries
+            else ""
+        )
         user_payload = {
             "seller": {
                 "name": seller.name,
@@ -154,9 +176,10 @@ class AnthropicWebResearchProvider:
                 "ideal_customer_profile": seller.icp_description,
                 "internal_company_size_range": seller.internal_company_size_range,
             },
+            "target_countries": countries,
             "task": (
                 f"Encontrá hasta {limit} empresas reales que serían prospects naturales "
-                f"de {seller.name}. Devolvé un JSON con la forma especificada."
+                f"de {seller.name}.{countries_clause} Devolvé un JSON con la forma especificada."
             ),
         }
         data = self._call_with_web_tools(

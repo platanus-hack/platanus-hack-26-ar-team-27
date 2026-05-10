@@ -57,6 +57,24 @@ def _heuristic_diagnostic(
         size = "2-10"
     elif "team" in text_lower:
         size = "11-50"
+    countries: list[str] = []
+    country_hints = {
+        "Argentina": ["argentina", " ar ", "buenos aires"],
+        "Brasil": ["brasil", "brazil", "são paulo", "sao paulo"],
+        "México": ["méxico", "mexico", "cdmx"],
+        "Chile": ["chile", "santiago"],
+        "Colombia": ["colombia", "bogotá", "bogota"],
+        "Uruguay": ["uruguay", "montevideo"],
+        "Estados Unidos": ["estados unidos", "united states", "usa", " us ", "u.s."],
+        "España": ["españa", "spain", "madrid", "barcelona"],
+    }
+    for country, hints in country_hints.items():
+        if any(h in text_lower for h in hints):
+            countries.append(country)
+    if "latam" in text_lower or "latin america" in text_lower:
+        for c in ("Argentina", "Brasil", "México", "Chile", "Colombia"):
+            if c not in countries:
+                countries.append(c)
     return GtmDiagnostic(
         company_name=company_name,
         business_context_summary=combined_text[:600],
@@ -64,6 +82,7 @@ def _heuristic_diagnostic(
         campaign_target_company_count=target_count,
         internal_company_size_range=size,  # type: ignore[arg-type]
         suggested_domain_names=suggested,
+        target_countries=countries,
         notes="Generated heuristically from the written prompt plus parsed attachment context when available.",
     )
 
@@ -142,6 +161,7 @@ def analyze_company(
         internal_company_size_range=diagnostic.internal_company_size_range,
         target_company_count=diagnostic.campaign_target_company_count,
         suggested_domain_names=diagnostic.suggested_domain_names,
+        target_countries=diagnostic.target_countries or None,
         source_files_metadata=[f.model_dump() for f in payload.files] or None,
         confirmation_status="pending_user_confirmation",
         agent_run_id=agent_run_id,
@@ -165,6 +185,13 @@ def confirm_company(session: Session, company_id: str, payload: CompanyConfirmRe
         company.internal_company_size_range = payload.internal_company_size_range
     if payload.suggested_domain_names is not None:
         company.suggested_domain_names = payload.suggested_domain_names
+    if payload.target_countries is not None:
+        cleaned: list[str] = []
+        for c in payload.target_countries:
+            c2 = (c or "").strip()
+            if c2 and c2 not in cleaned:
+                cleaned.append(c2)
+        company.target_countries = cleaned or None
     company.confirmation_status = "confirmed"
     session.flush()
     return company

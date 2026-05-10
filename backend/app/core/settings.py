@@ -57,6 +57,12 @@ class Settings(BaseSettings):
     allow_demo_emails: bool = False
     default_from_local_part: str = "warmup"
 
+    vercel_token: str = ""
+    vercel_team_id: str = ""
+    vercel_api_base: str = "https://api.vercel.com"
+    vercel_dns_target: str = "cname.vercel-dns.com"
+    allow_blog_publish: bool = False
+
     research_provider: str = "anthropic_web"
     serpapi_api_key: str = ""
     tavily_api_key: str = ""

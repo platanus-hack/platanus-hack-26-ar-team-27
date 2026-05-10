@@ -8,6 +8,7 @@ export interface CompanyOut {
   internal_company_size_range: SizeRange | null;
   target_company_count: number;
   suggested_domain_names: string[] | null;
+  target_countries: string[] | null;
   confirmation_status: "pending_user_confirmation" | "confirmed" | "rejected";
   agent_run_id: string | null;
 }
@@ -73,6 +74,7 @@ export interface TargetCompanyOut {
   score: number | null;
   score_rationale: string | null;
   selection_status: string;
+  evidence_url: string | null;
 }
 
 export interface ContactOut {
@@ -81,6 +83,8 @@ export interface ContactOut {
   title: string | null;
   email: string | null;
   validation_status: string;
+  linkedin_url: string | null;
+  target_company_id: string | null;
 }
 
 export interface CampaignResearchResult {
@@ -97,10 +101,23 @@ export interface EmailDraftOut {
   subject: string;
   body_text: string;
   status: string;
+  personalization_notes: string | null;
 }
 
 export interface CampaignOut {
   id: string;
+  name: string;
+  status: string;
+  total_drafts: number;
+  total_approved: number;
+  total_sent: number;
+  total_delivered: number;
+  total_opened: number;
+  total_clicked: number;
+  total_replied: number;
+  total_failed: number;
+  total_complained: number;
+  total_unsubscribed: number;
 }
 
 export interface WarmupStatus {
