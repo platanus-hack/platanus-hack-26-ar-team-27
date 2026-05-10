@@ -2,5 +2,5 @@
   "project-name": "T2M",
   "project-oneliner-spanish": "Go to market agéntico",
   "project-description-spanish": "T2M es un sistema que resuelve de manera automática el proceso de Go To Market en las startups. El sistema se compone de 5 agentes que se encargan de: analizar las características del negocio, comprar y configurar dominios, planificar la estrategia de marketing, hacer el warmup de mails y contactar potenciales clientes, y escribir blogs.",
-  "project-url": "https://retail-growth-engine-one.vercel.app/"
+  "deploy-url": "https://retail-growth-engine-one.vercel.app/"
 }
