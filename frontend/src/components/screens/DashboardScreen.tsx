@@ -73,6 +73,7 @@ function summarizeDnsRecords(records: DnsRecordOut[]): DnsRecordSummary[] {
 
 export default function DashboardScreen({ data, onOpenInbox, onReset }: DashboardScreenProps) {
   const { company, domains, dnsResults, targets, contacts, drafts } = data;
+  const gtmStrategy = company.gtm_strategy?.trim() || "";
 
   const totalCost = domains.reduce((s, d) => s + (d.price_usd ?? 2.99), 0);
   const totalDnsRecords = dnsResults.reduce((s, r) => s + r.records.length, 0);
@@ -223,6 +224,21 @@ export default function DashboardScreen({ data, onOpenInbox, onReset }: Dashboar
           </div>
         </div>
       </div>
+
+      {gtmStrategy && (
+        <div className="section-block">
+          <div className="section-head">
+            <div>
+              <span className="kicker">Diagnóstico · salida al mercado</span>
+              <h3>Estrategia GTM sugerida</h3>
+            </div>
+            <span className="meta">solo lectura · generada en diagnóstico</span>
+          </div>
+          <div className="gtm-strategy-card">
+            <p>{gtmStrategy}</p>
+          </div>
+        </div>
+      )}
 
       {/* ── Infraestructura ──────────────────────────────────────────── */}
       {domains.length > 0 && (

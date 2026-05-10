@@ -35,6 +35,7 @@ class GtmDiagnostic(BaseModel):
     internal_company_size_range: SizeRange = "unknown"
     suggested_domain_names: list[str] = Field(default_factory=list)
     target_countries: list[str] = Field(default_factory=list)
+    gtm_strategy: str | None = None
     notes: str | None = None
 
     @field_validator("suggested_domain_names")
@@ -57,6 +58,14 @@ class GtmDiagnostic(BaseModel):
                 seen.append(c2)
         return seen
 
+    @field_validator("gtm_strategy")
+    @classmethod
+    def _normalize_gtm_strategy(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
 
 class CompanyConfirmRequest(BaseModel):
     company_name: str | None = None
@@ -71,6 +80,7 @@ class CompanyOut(BaseModel):
     id: str
     name: str
     business_context_summary: str | None
+    gtm_strategy: str | None = None
     icp_description: str | None
     internal_company_size_range: str | None
     target_company_count: int

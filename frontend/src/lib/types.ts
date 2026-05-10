@@ -4,6 +4,7 @@ export interface CompanyOut {
   id: string;
   name: string;
   business_context_summary: string | null;
+  gtm_strategy: string | null;
   icp_description: string | null;
   internal_company_size_range: SizeRange | null;
   target_company_count: number;

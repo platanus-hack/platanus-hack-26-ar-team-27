@@ -56,6 +56,7 @@ class Company(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     raw_input: Mapped[str | None] = mapped_column(Text)
     business_context_summary: Mapped[str | None] = mapped_column(Text)
+    gtm_strategy: Mapped[str | None] = mapped_column(Text)
     icp_description: Mapped[str | None] = mapped_column(Text)
     internal_company_size_range: Mapped[str | None] = mapped_column(String(32))
     target_company_count: Mapped[int] = mapped_column(Integer, default=0)

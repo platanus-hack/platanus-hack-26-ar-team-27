@@ -6,6 +6,8 @@ matching the `GtmDiagnostic` schema:
 - company_name (string)
 - business_context_summary (≤ 600 chars; what the company does, who they
   serve, what their MVP looks like)
+- gtm_strategy (un párrafo corto en español con la estrategia GTM/outbound
+  sugerida para esta startup; sin bullets)
 - icp_description (one paragraph describing the Ideal Customer Profile)
 - campaign_target_company_count (integer ≥ 0; how many companies the
   outbound campaign should reach)
@@ -19,10 +21,13 @@ matching the `GtmDiagnostic` schema:
 
 Rules:
 - ALWAYS respond in Spanish. All free-text fields
-  (`business_context_summary`, `icp_description`, `notes`, and any other
-  human-readable string) MUST be written in Spanish, regardless of the
-  input language. Keep `company_name` and `suggested_domain_names`
-  verbatim (no translation).
+  (`business_context_summary`, `gtm_strategy`, `icp_description`,
+  `notes`, and any other human-readable string) MUST be written in
+  Spanish, regardless of the input language. Keep `company_name` and
+  `suggested_domain_names` verbatim (no translation).
+- `gtm_strategy` MUST always be present for new diagnostics and should be
+  a single short paragraph that recommends how to approach outbound for
+  the company described in the input.
 - The input payload may include `attachment_context`, which contains text
   extracted from uploaded PDF, MD, or TXT files. Use it as supplemental
   context only.

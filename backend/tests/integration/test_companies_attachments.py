@@ -47,11 +47,14 @@ def test_analyze_accepts_multipart_attachments(monkeypatch, app_session_factory)
     )
 
     assert response.status_code == 200
-    company_id = response.json()["id"]
+    body = response.json()
+    company_id = body["id"]
+    assert body["gtm_strategy"]
 
     with app_session_factory() as session:
         company = session.get(Company, company_id)
         assert company is not None
+        assert company.gtm_strategy == body["gtm_strategy"]
         assert company.source_files_metadata == [
             {
                 "name": "brief.txt",
@@ -83,6 +86,11 @@ def test_analyze_stream_hides_attachment_context_from_persisted_payload(monkeypa
                             {
                                 "company_name": "Acme Robotics",
                                 "business_context_summary": "Predictive maintenance for manufacturers.",
+                                "gtm_strategy": (
+                                    "Priorizar una prospección outbound sobre manufacturers en LATAM "
+                                    "con secuencias personalizadas para plant managers y una lista "
+                                    "acotada de cuentas de alto fit."
+                                ),
                                 "icp_description": "Plant managers in LATAM manufacturers.",
                                 "campaign_target_company_count": 50,
                                 "internal_company_size_range": "2-10",
@@ -133,10 +141,16 @@ def test_analyze_stream_hides_attachment_context_from_persisted_payload(monkeypa
     events = _parse_sse_events(stream_response.text)
     done_payload = next(payload for event, payload in events if event == "done")
     company_id = done_payload["company"]["id"]
+    assert done_payload["company"]["gtm_strategy"] == (
+        "Priorizar una prospección outbound sobre manufacturers en LATAM "
+        "con secuencias personalizadas para plant managers y una lista "
+        "acotada de cuentas de alto fit."
+    )
 
     with app_session_factory() as session:
         company = session.get(Company, company_id)
         assert company is not None
+        assert company.gtm_strategy == done_payload["company"]["gtm_strategy"]
         assert company.source_files_metadata == [
             {
                 "name": "brief.txt",
@@ -158,6 +172,44 @@ def test_analyze_stream_hides_attachment_context_from_persisted_payload(monkeypa
             ],
         }
         assert "attachment_context" not in agent_run.input_payload
+
+
+def test_confirm_and_get_preserve_gtm_strategy(monkeypatch, app_session_factory):
+    client = _make_client(monkeypatch, app_session_factory)
+    analyze_response = client.post(
+        "/companies/analyze",
+        headers={"X-Api-Key": "test-key"},
+        json={
+            "raw_input": (
+                "Acme Robotics sells predictive maintenance software for manufacturers in LATAM. "
+                "ICP: plant managers at mid-market factories."
+            )
+        },
+    )
+
+    assert analyze_response.status_code == 200, analyze_response.text
+    analyzed_company = analyze_response.json()
+    assert analyzed_company["gtm_strategy"]
+
+    confirm_response = client.post(
+        f"/companies/{analyzed_company['id']}/confirm",
+        headers={"X-Api-Key": "test-key"},
+        json={},
+    )
+    assert confirm_response.status_code == 200, confirm_response.text
+    assert confirm_response.json()["gtm_strategy"] == analyzed_company["gtm_strategy"]
+
+    get_response = client.get(
+        f"/companies/{analyzed_company['id']}",
+        headers={"X-Api-Key": "test-key"},
+    )
+    assert get_response.status_code == 200, get_response.text
+    assert get_response.json()["gtm_strategy"] == analyzed_company["gtm_strategy"]
+
+    with app_session_factory() as session:
+        company = session.get(Company, analyzed_company["id"])
+        assert company is not None
+        assert company.gtm_strategy == analyzed_company["gtm_strategy"]
 
 
 def _make_client(monkeypatch, app_session_factory):

@@ -138,6 +138,8 @@ X-Api-Key: ...
 ```
 
 Todos los campos son opcionales; lo que no mandás conserva el valor del diagnóstico.
+`gtm_strategy` no forma parte del payload de confirmación: el backend lo devuelve
+como texto read-only generado durante el diagnóstico.
 
 Respuesta: `CompanyOut` con `confirmation_status: "confirmed"`. A partir de aquí
 los endpoints de domains / dns / warmup / campaigns dejan de devolver
@@ -154,6 +156,7 @@ type CompanyOut = {
   id: string;
   name: string;
   business_context_summary: string | null;
+  gtm_strategy: string | null;
   icp_description: string | null;
   internal_company_size_range:
     | "solo" | "2-10" | "11-50" | "51-200" | "201+" | "unknown";

@@ -29,6 +29,48 @@ class CompanyNotConfirmed(Exception):
     pass
 
 
+def _format_country_list(countries: list[str]) -> str:
+    if not countries:
+        return "los mercados con mejor señal de demanda"
+    if len(countries) == 1:
+        return countries[0]
+    if len(countries) == 2:
+        return f"{countries[0]} y {countries[1]}"
+    return f"{', '.join(countries[:-1])} y {countries[-1]}"
+
+
+def _extract_icp_hint(text: str) -> str | None:
+    patterns = [
+        r"(?:icp|ideal customer profile)\s*[:\-]\s*([^\n.]+)",
+        r"(?:buyer|buyers|target|audience)\s*[:\-]\s*([^\n.]+)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text, flags=re.IGNORECASE)
+        if match:
+            cleaned = re.sub(r"\s+", " ", match.group(1)).strip(" -:;,")
+            if cleaned:
+                return cleaned
+    return None
+
+
+def _build_gtm_strategy(
+    *,
+    company_name: str,
+    combined_text: str,
+    target_count: int,
+    countries: list[str],
+) -> str:
+    geography = _format_country_list(countries)
+    icp_hint = _extract_icp_hint(combined_text)
+    audience = icp_hint or "decisores del ICP detectado"
+    return (
+        f"Priorizar una prospección outbound enfocada en {geography}, arrancando con "
+        f"{target_count} cuentas bien calificadas y mensajes personalizados para {audience}; "
+        f"el primer contacto debe abrir con el problema principal que resuelve {company_name} "
+        "y cerrar con una invitación simple a validar interés antes de escalar volumen."
+    )
+
+
 def _heuristic_diagnostic(
     payload: CompanyAnalyzeRequest,
     attachment_context: list[AttachmentContextFile],
@@ -75,9 +117,16 @@ def _heuristic_diagnostic(
         for c in ("Argentina", "Brasil", "México", "Chile", "Colombia"):
             if c not in countries:
                 countries.append(c)
+    gtm_strategy = _build_gtm_strategy(
+        company_name=company_name,
+        combined_text=combined_text,
+        target_count=target_count,
+        countries=countries,
+    )
     return GtmDiagnostic(
         company_name=company_name,
         business_context_summary=combined_text[:600],
+        gtm_strategy=gtm_strategy,
         icp_description="Inferred from input; refine in confirmation step.",
         campaign_target_company_count=target_count,
         internal_company_size_range=size,  # type: ignore[arg-type]
@@ -153,10 +202,32 @@ def analyze_company(
             )
         diagnostic = _heuristic_diagnostic(payload, attachment_context)
 
+    if not diagnostic.gtm_strategy:
+        combined_text = payload.raw_input.strip()
+        if attachment_context:
+            supplemental_context = "\n\n".join(
+                f"[Attachment: {attachment.name}]\n{attachment.text}"
+                for attachment in attachment_context
+                if attachment.text.strip()
+            )
+            if supplemental_context:
+                combined_text = f"{combined_text}\n\n{supplemental_context}" if combined_text else supplemental_context
+        diagnostic = diagnostic.model_copy(
+            update={
+                "gtm_strategy": _build_gtm_strategy(
+                    company_name=diagnostic.company_name,
+                    combined_text=combined_text,
+                    target_count=diagnostic.campaign_target_company_count,
+                    countries=list(diagnostic.target_countries),
+                )
+            }
+        )
+
     company = Company(
         name=diagnostic.company_name,
         raw_input=payload.raw_input,
         business_context_summary=diagnostic.business_context_summary,
+        gtm_strategy=diagnostic.gtm_strategy,
         icp_description=diagnostic.icp_description,
         internal_company_size_range=diagnostic.internal_company_size_range,
         target_company_count=diagnostic.campaign_target_company_count,

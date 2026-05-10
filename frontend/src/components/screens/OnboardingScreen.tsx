@@ -1,18 +1,12 @@
 "use client";
 import { useState } from "react";
 import type { CompanyOut } from "@/lib/types";
+import type { ConfirmPayload } from "@/lib/api";
 import { IconDiagnostic, IconDomain } from "@/components/stage/AgentIcons";
 
 interface OnboardingScreenProps {
   company: CompanyOut;
-  onConfirm: (payload: {
-    company_name?: string;
-    icp_description?: string;
-    campaign_target_company_count?: number;
-    internal_company_size_range?: string;
-    suggested_domain_names?: string[];
-    target_countries?: string[];
-  }) => void;
+  onConfirm: (payload: ConfirmPayload) => void;
   onBack: () => void;
   onEdit?: () => void;
   isLoading: boolean;

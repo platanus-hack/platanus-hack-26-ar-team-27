@@ -32,8 +32,12 @@ def test_full_dry_run_flow(session):
     )
     company = analyze_company(session, payload, force_heuristic=True)
     assert company.confirmation_status == "pending_user_confirmation"
+    assert company.gtm_strategy
     confirm_company(session, company.id, CompanyConfirmRequest())
-    assert session.get(Company, company.id).confirmation_status == "confirmed"
+    persisted_company = session.get(Company, company.id)
+    assert persisted_company is not None
+    assert persisted_company.confirmation_status == "confirmed"
+    assert persisted_company.gtm_strategy == company.gtm_strategy
 
     plan = plan_domains(session, company.id)
     assert plan.capped_domains <= 2
