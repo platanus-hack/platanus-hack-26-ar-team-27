@@ -232,3 +232,38 @@ export async function sendCampaign(
 ): Promise<unknown> {
   return post(`/campaigns/${campaignId}/send`, { execute });
 }
+
+// ── Blog ──────────────────────────────────────────────────────────────
+export interface BlogPublicationOut {
+  id: string;
+  company_id: string;
+  custom_url: string | null;
+  vercel_deployment_url: string | null;
+  subdomain_host: string | null;
+  title: string | null;
+  status: string;
+  error_message?: string | null;
+}
+
+export async function publishBlog(
+  companyId: string,
+  execute = true
+): Promise<BlogPublicationOut> {
+  return post<BlogPublicationOut>(`/companies/${companyId}/blog/publish`, {
+    execute,
+  });
+}
+
+export async function getBlog(
+  companyId: string
+): Promise<BlogPublicationOut | null> {
+  const res = await fetch(`${API_BASE}/companies/${companyId}/blog`, {
+    headers: authHeaders(),
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    const err = await res.text().catch(() => res.statusText);
+    throw new Error(`GET /companies/${companyId}/blog → ${res.status}: ${err}`);
+  }
+  return res.json();
+}

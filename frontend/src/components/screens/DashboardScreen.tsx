@@ -1,6 +1,8 @@
 "use client";
+import { useEffect, useState } from "react";
 import type { DashboardData, DnsRecordOut } from "@/lib/types";
 import { AGENT_ICONS, AGENT_LABELS, AGENT_LIST, type AgentName } from "@/components/stage/AgentIcons";
+import { publishBlog, getBlog, type BlogPublicationOut } from "@/lib/api";
 
 interface DashboardScreenProps {
   data: DashboardData;
@@ -75,6 +77,32 @@ export default function DashboardScreen({ data, onOpenInbox, onReset }: Dashboar
   const totalCost = domains.reduce((s, d) => s + (d.price_usd ?? 2.99), 0);
   const totalDnsRecords = dnsResults.reduce((s, r) => s + r.records.length, 0);
   const repPoints = [32, 41, 56, 68, 79, 86, 92];
+
+  // ── Blog publication state ─────────────────────────────────────────
+  const [blog, setBlog] = useState<BlogPublicationOut | null>(null);
+  const [blogBusy, setBlogBusy] = useState(false);
+  const [blogError, setBlogError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getBlog(company.id)
+      .then((b) => { if (!cancelled) setBlog(b); })
+      .catch(() => { /* 404 / network — noop */ });
+    return () => { cancelled = true; };
+  }, [company.id]);
+
+  async function handlePublishBlog() {
+    setBlogBusy(true);
+    setBlogError(null);
+    try {
+      const result = await publishBlog(company.id, true);
+      setBlog(result);
+    } catch (e) {
+      setBlogError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBlogBusy(false);
+    }
+  }
 
   // Sort targets by score descending for the prospects section
   const sortedTargets = [...targets].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
@@ -244,6 +272,98 @@ export default function DashboardScreen({ data, onOpenInbox, onReset }: Dashboar
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Blog ─────────────────────────────────────────────────────── */}
+      {domains.length > 0 && (
+        <div className="section-block">
+          <div className="section-head">
+            <div>
+              <span className="kicker">Content · blog generado por LLM</span>
+              <h3>
+                {blog?.status === "live"
+                  ? "Blog publicado en Vercel"
+                  : "Generar blog estático y desplegarlo"}
+              </h3>
+            </div>
+            <span className="meta">
+              subdominio: blog.{domains[0].domain} · vercel
+            </span>
+          </div>
+          <div className="domain-card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {blog?.status === "live" && blog.custom_url && (
+              <>
+                <div style={{ fontSize: 13, color: "var(--fg-1)" }}>
+                  <b>{blog.title ?? "Blog"}</b> — listo. El DNS puede tardar 1–15 min en propagar.
+                </div>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <a
+                    href={blog.custom_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-dark"
+                    style={{ textDecoration: "none" }}
+                  >
+                    Abrir {blog.subdomain_host} →
+                  </a>
+                  {blog.vercel_deployment_url && (
+                    <a
+                      href={blog.vercel_deployment_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-ghost"
+                      style={{ textDecoration: "none" }}
+                    >
+                      Vercel preview →
+                    </a>
+                  )}
+                  <button
+                    className="btn btn-ghost"
+                    onClick={handlePublishBlog}
+                    disabled={blogBusy}
+                  >
+                    {blogBusy ? "Re-publicando…" : "Re-generar y re-publicar"}
+                  </button>
+                </div>
+              </>
+            )}
+            {blog?.status === "dry_run" && (
+              <>
+                <div style={{ fontSize: 13, color: "var(--fg-1)" }}>
+                  Blog generado en modo <b>dry run</b> (HTML guardado, sin deploy real).
+                  Activá <code>ALLOW_BLOG_PUBLISH=true</code> y un <code>VERCEL_TOKEN</code> en el backend para publicar.
+                </div>
+                <div>
+                  <button className="btn btn-dark" onClick={handlePublishBlog} disabled={blogBusy}>
+                    {blogBusy ? "Publicando…" : "Reintentar publicación"}
+                  </button>
+                </div>
+              </>
+            )}
+            {!blog && (
+              <>
+                <div style={{ fontSize: 13, color: "var(--fg-1)" }}>
+                  Generamos un sitio estático con 3–5 posts editoriales adaptados a tu ICP y lo publicamos en
+                  &nbsp;<b>blog.{domains[0].domain}</b>. Tarda ~10–20 segundos.
+                </div>
+                <div>
+                  <button className="btn btn-dark" onClick={handlePublishBlog} disabled={blogBusy}>
+                    {blogBusy ? "Generando + desplegando…" : "Publicar blog →"}
+                  </button>
+                </div>
+              </>
+            )}
+            {blog && blog.status !== "live" && blog.status !== "dry_run" && (
+              <div style={{ fontSize: 12, color: "var(--fg-2)" }}>
+                Estado: <b>{blog.status}</b>
+                {blog.error_message ? ` · ${blog.error_message}` : ""}
+              </div>
+            )}
+            {blogError && (
+              <div style={{ fontSize: 12, color: "#c0392b" }}>Error: {blogError}</div>
+            )}
           </div>
         </div>
       )}
