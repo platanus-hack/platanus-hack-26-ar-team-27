@@ -366,7 +366,7 @@ export default function StageScreen({ company, rawInput, onDone, preloadedResear
 
     onDone({
       company,
-      domains: purchasedDomains,
+      domains: purchased,
       domainDetails: null,
       dnsResults: allDnsRecords.length > 0 ? [{
         domain_id: purchased[0]?.id ?? "",
