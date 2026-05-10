@@ -248,13 +248,6 @@ export default function DashboardScreen({
           <h2>
             Tu primer outbound está <em>en vuelo</em>.
           </h2>
-          <p className="description">
-            Los cinco agentes terminaron. Compramos {domains.length} dominio
-            {domains.length > 1 ? "s" : ""} bajo cap, configuramos DNS (MX + SPF
-            + DKIM + DMARC) por dominio, iniciamos warmup de 7 días y generamos{" "}
-            <b>{drafts.length} emails personalizados</b> al ICP con
-            investigación web en vivo.
-          </p>
           {icpDescription && (
             <div className="summary-icp">
               <span className="lbl">ICP</span>

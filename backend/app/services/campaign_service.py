@@ -31,6 +31,7 @@ from app.schemas.research import (
 )
 from app.services.diagnostic_service import get_company_or_404, require_confirmed
 from app.services.dry_run_fixtures import mailgun_send_message as fx_mailgun_send
+from app.services.mail_routing import with_internal_log_recipient
 from app.services.research.provider import (
     ResearchProvider,
     SellerContext,
@@ -246,6 +247,10 @@ def _is_suppressed(session: Session, email: str | None) -> bool:
     return session.query(Suppression).filter_by(email=email.lower()).first() is not None
 
 
+def _recorded_mail_response(payload: dict | None, recipients: list[str]) -> dict:
+    return {**(payload or {}), "to": list(recipients)}
+
+
 def send_campaign(
     session: Session,
     campaign_id: str,
@@ -301,8 +306,16 @@ def send_campaign(
             session.add(send)
             sends.append(send)
             continue
+        recipients = with_internal_log_recipient(contact.email if contact else None)
         if not real:
-            resp = fx_mailgun_send(domain.domain, recipient=contact.email or "n/a", subject=draft.subject)
+            resp = _recorded_mail_response(
+                fx_mailgun_send(
+                    domain.domain,
+                    recipients=recipients,
+                    subject=draft.subject,
+                ),
+                recipients,
+            )
             send = EmailSend(
                 draft_id=draft.id,
                 campaign_id=campaign.id,
@@ -326,13 +339,16 @@ def send_campaign(
             )
             continue
         try:
-            resp = mailgun.send_message(  # type: ignore[union-attr]
-                domain.domain,
-                from_addr=draft.from_email or f"hello@{domain.domain}",
-                to=[contact.email],
-                subject=draft.subject,
-                text=draft.body_text,
-            ).body
+            resp = _recorded_mail_response(
+                mailgun.send_message(  # type: ignore[union-attr]
+                    domain.domain,
+                    from_addr=draft.from_email or f"hello@{domain.domain}",
+                    to=recipients,
+                    subject=draft.subject,
+                    text=draft.body_text,
+                ).body,
+                recipients,
+            )
             send = EmailSend(
                 draft_id=draft.id,
                 campaign_id=campaign.id,

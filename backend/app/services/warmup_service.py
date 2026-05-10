@@ -18,6 +18,7 @@ from app.core.settings import get_settings
 from app.db.models import Company, PurchasedDomain, WarmupInteraction
 from app.schemas.warmup import WarmupInteractionOut, WarmupRunResult, WarmupStatusOut
 from app.services.dry_run_fixtures import mailgun_send_message as fx_mailgun_send
+from app.services.mail_routing import with_internal_log_recipient
 
 
 class NoWarmupPairs(Exception):
@@ -34,6 +35,10 @@ _WARMUP_THREAD_TEMPLATES = [
 
 def _domain_warmup_email(domain: PurchasedDomain) -> str:
     return domain.warmup_email or f"warmup@{domain.domain}"
+
+
+def _recorded_mail_response(payload: dict | None, recipients: list[str]) -> dict:
+    return {**(payload or {}), "to": list(recipients)}
 
 
 def _pair_domains(domains: list[PurchasedDomain]) -> list[tuple[PurchasedDomain, PurchasedDomain]]:
@@ -108,18 +113,29 @@ def run_warmup(
         for idx, (subject, body) in enumerate(itertools.islice(_WARMUP_THREAD_TEMPLATES, 0, 2)):
             from_email = _domain_warmup_email(src)
             to_email = _domain_warmup_email(dst)
+            recipients = with_internal_log_recipient(to_email)
             try:
                 if real:
-                    resp = mailgun.send_message(  # type: ignore[union-attr]
-                        src.domain,
-                        from_addr=from_email,
-                        to=[to_email],
-                        subject=subject,
-                        text=body,
-                        tags=["warmup"],
-                    ).body
+                    resp = _recorded_mail_response(
+                        mailgun.send_message(  # type: ignore[union-attr]
+                            src.domain,
+                            from_addr=from_email,
+                            to=recipients,
+                            subject=subject,
+                            text=body,
+                            tags=["warmup"],
+                        ).body,
+                        recipients,
+                    )
                 else:
-                    resp = fx_mailgun_send(src.domain, recipient=to_email, subject=subject)
+                    resp = _recorded_mail_response(
+                        fx_mailgun_send(
+                            src.domain,
+                            recipients=recipients,
+                            subject=subject,
+                        ),
+                        recipients,
+                    )
                 msg_id = resp.get("id")
                 interaction = WarmupInteraction(
                     from_domain_id=src.id,

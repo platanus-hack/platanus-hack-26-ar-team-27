@@ -38,6 +38,11 @@ def test_warmup_creates_interactions_and_promotes_domains(session):
     assert res.dry_run is True
     assert len(res.interactions) >= 2
     assert sorted(res.promoted_domains) == ["acme-0.com", "acme-1.com"]
+    first = res.interactions[0]
+    assert first.raw_event_json["to"] == [
+        first.to_email,
+        "fardenghi@itba.edu.ar",
+    ]
 
 
 def test_warmup_respects_daily_cap(session):
