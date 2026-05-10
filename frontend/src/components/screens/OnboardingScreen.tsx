@@ -11,6 +11,7 @@ interface OnboardingScreenProps {
     campaign_target_company_count?: number;
     internal_company_size_range?: string;
     suggested_domain_names?: string[];
+    target_countries?: string[];
   }) => void;
   onBack: () => void;
   onEdit?: () => void;
