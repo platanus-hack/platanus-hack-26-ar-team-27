@@ -86,6 +86,18 @@ Todos los agentes corren sobre un `AgentRunner` genérico con Anthropic SDK (too
 
 Además del pipeline de 5 agentes, el sistema incluye un **Blog Service** post-pipeline que genera HTML editorial personalizado para la empresa usando Anthropic, lo despliega en Vercel y apunta `blog.<dominio>` con un CNAME en Spaceship — todo desde el dashboard en un clic.
 
+### Detalles de implementación
+
+- **Streaming en vivo del diagnóstico**: el endpoint `POST /companies/analyze/stream-token` emite un token de un solo uso, y `GET /companies/analyze/stream?token=…` lo consume vía `StreamingResponse` (`text/event-stream`). Esta indirección existe porque la API de `EventSource` del browser no acepta headers custom, así que la auth con `X-Api-Key` se reemplaza por el token efímero — la UI muestra los tokens del LLM en tiempo real mientras llegan.
+- **Tool registry por dominio**: las herramientas que los agentes pueden invocar están organizadas en módulos (`tools/gtm`, `tools/porkbun`, `tools/mailgun`, `tools/research`, `tools/warmup`, `tools/blog`) y registradas en un `ToolRegistry` central con `bootstrap.py`, lo que permite scopear el toolset de cada agente sin acoplar la lógica al runner.
+- **Safety service como punto único**: cada efecto externo (compra de dominio, envío de email, deploy de blog) pasa por `app/core/safety.py`, que evalúa `ALLOW_DOMAIN_PURCHASES`, `ALLOW_COLD_EMAILS`, `ALLOW_DEMO_EMAILS` y caps configurables, y deja audit log antes de permitir el call. Sin flag, todo se redirige a fixtures de dry-run.
+- **Row-Level Security en Supabase**: la migration `0002_enable_rls` activa RLS sobre las tablas de tenants para que cada compañía solo vea sus propios datos a nivel base; se complementa con auth `X-Api-Key` en la API.
+- **Webhooks de Mailgun verificados con HMAC**: los endpoints `/webhooks/mailgun/events` y `/webhooks/mailgun/inbound` validan firma HMAC-SHA256 y persisten eventos (`delivered`, `opened`, `bounced`, `complained`) para alimentar el dashboard.
+- **CLI y API comparten servicio**: `cli.py` (Typer) y `app/api/*.py` (FastAPI) llaman a la misma capa `services/`, así que cualquier flujo demoable desde CLI es idéntico al que dispara la UI.
+- **Visualización en vivo de los agentes**: el frontend tiene un componente `AgentStage` con visualizadores dedicados por agente (`DiagnosticVis`, `DomainVis`, `DNSVis`, `WarmupVis`, `ResearchVis`) + `Console` + `PhaseRibbon`, que renderizan el progreso del pipeline mientras los agentes corren.
+- **Tests sin red**: 12 módulos de tests con `respx` mockean Anthropic, Porkbun, Spaceship, Mailgun y Vercel; `pytest` corre en SQLite in-memory. Cero hits a APIs reales en CI.
+- **Migrations versionadas**: 8 migrations Alembic cubren el data model (`enable_rls`, `owned_domain_pool`, `target_evidence_url`, `company_target_countries`, `blog_publications`, `drop_purchased_domain_unique`, `seed_demo_fixed_domain`).
+
 ### Lifecycle de dominio
 
 ```
@@ -107,15 +119,16 @@ researching → ready_to_draft → drafts_pending → approved → sent / dry_ru
 | Capa | Tecnología |
 |------|------------|
 | Frontend | Next.js + TypeScript + Tailwind (deploy: Vercel) |
-| API | FastAPI + Pydantic v2 |
-| CLI | Typer (mismo código que la API) |
-| Agentes | Anthropic SDK (tool use + `web_search` / `web_fetch`) |
-| ORM / migraciones | SQLAlchemy + Alembic |
-| Base de datos | Supabase Postgres (SQLite en tests) |
+| Streaming UI | Server-Sent Events (`text/event-stream`) con auth por token efímero |
+| API | FastAPI + Pydantic v2 (auth `X-Api-Key`) |
+| CLI | Typer (mismo `services/` que la API) |
+| Agentes | Anthropic SDK (tool use estructurado + `web_search` / `web_fetch`) |
+| ORM / migraciones | SQLAlchemy + Alembic (8 migrations versionadas) |
+| Base de datos | Supabase Postgres con Row-Level Security (SQLite in-memory en tests) |
 | Registradores DNS | Porkbun REST API · Spaceship REST API |
-| Email infra | Mailgun (dominios, warming, envío, webhooks HMAC) |
-| Blog deploy | Vercel REST API (deploy + dominio custom) |
-| Tests | pytest + respx mocks (sin hits a APIs reales) |
+| Email infra | Mailgun (dominios, warming, envío, webhooks HMAC-SHA256) |
+| Blog deploy | Vercel REST API (deploy + dominio custom `blog.<dominio>`) |
+| Tests | pytest + `respx` mocks sobre todas las APIs externas |
 | Deploy backend | Render (Python Web Service, `render.yaml` Blueprint) |
 
 ---
@@ -142,8 +155,8 @@ uvicorn app.main:app --reload --port 8000
 
 # Frontend (en otra terminal)
 cd frontend
-pnpm install
-pnpm dev                   # http://localhost:3000
+npm install
+npm run dev                # http://localhost:3000
 ```
 
 Ver [`backend/README.md`](backend/README.md) para documentación completa de instalación, CLI y deploy.
