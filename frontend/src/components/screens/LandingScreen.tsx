@@ -8,21 +8,21 @@ const EXAMPLES = [
     stack: "B2B SaaS · Industrial IoT · Vertical AI",
     name: "Helio Robotics",
     hint: "Mantenimiento predictivo para robots industriales",
-    raw: "Helio Robotics is a B2B SaaS that helps mid-market manufacturers schedule predictive maintenance on industrial robots. We have a working MVP that ingests robot telemetry, detects anomalies and books service appointments automatically. Small team (5 engineers + 1 founder). Want to reach ~50 manufacturing companies in LATAM with 50-500 employees. ICP: plant managers and operations directors who already track downtime as a KPI.",
+    raw: "Helio Robotics es un B2B SaaS que ayuda a fabricantes medianos a programar el mantenimiento predictivo de sus robots industriales. Tenemos un MVP funcionando que ingesta telemetría de robots, detecta anomalías y agenda citas de servicio de forma automática. Somos un equipo pequeño (5 ingenieros + 1 founder). Queremos llegar a ~50 empresas manufactureras en LATAM con entre 50 y 500 empleados. El ICP son gerentes de planta y directores de operaciones que ya trackan el downtime como KPI.",
   },
   {
-    key: "finch",
-    stack: "B2B API · FinTech · Treasury",
-    name: "Finch Finance",
-    hint: "Tesorería automatizada para fintechs latinoamericanas",
-    raw: "Finch is an embedded treasury API for Latin American fintechs. We give them multi-currency accounts, FX hedging and payouts in 12 countries. Already 3 paying customers. Want to scale to 80 prospects in next quarter.",
+    key: "tm2",
+    stack: "GTM · Outbound Automatizado · B2B Tech",
+    name: "MT²",
+    hint: "Go-to-Market estratégico para empresas tecnológicas",
+    raw: "MT^2 es una plataforma de servicios de Go-to-Market estratégico que ayuda a empresas tecnológicas a acelerar su entrada y expansión en nuevos mercados. Contamos con un framework validado que abarca desde el discovery de clientes hasta la ejecución de campañas de outbound automatizadas, logrando reducir el ciclo de ventas inicial.",
   },
   {
     key: "arc",
     stack: "B2B SaaS · DevTools · AI",
     name: "Arc Studio",
     hint: "Generación de pruebas E2E con AI para frontends complejos",
-    raw: "Arc Studio uses LLMs to generate Playwright tests from Figma designs. Targeted at YC-stage engineering leaders who don't have time to maintain test suites. Pre-seed.",
+    raw: "Arc Studio usa LLMs para generar suites de tests Playwright directamente desde diseños en Figma, eliminando el trabajo manual de escribir y mantener pruebas E2E. Nuestro MVP ya está en uso por 4 equipos de ingeniería en etapa YC y seed. El ICP son engineering leads de startups de 10 a 80 personas que iteran rápido en frontend y no tienen tiempo para mantener tests. Queremos llegar a 60 prospects en los próximos 90 días, enfocados en LATAM y España.",
   },
 ];
 
