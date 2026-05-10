@@ -3,9 +3,10 @@
 interface TopbarProps {
   screen: string;
   companyName?: string | null;
+  onLogoClick?: () => void;
 }
 
-export default function Topbar({ screen, companyName }: TopbarProps) {
+export default function Topbar({ screen, companyName, onLogoClick }: TopbarProps) {
   const phases = [
     { id: "diagnostic", color: "var(--diagnostic)", label: "Diagnóstico" },
     { id: "domain",     color: "var(--domain)",     label: "Dominios" },
@@ -16,7 +17,7 @@ export default function Topbar({ screen, companyName }: TopbarProps) {
 
   return (
     <header className="topbar">
-      <div className="brand">
+      <div className="brand" onClick={onLogoClick} style={{ cursor: onLogoClick ? "pointer" : "default" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.svg" alt="TakeMe2Market" style={{ height: 36, display: "block" }} />
       </div>

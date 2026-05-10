@@ -209,7 +209,7 @@ export default function OnboardingScreen({
               <span className="ico"><IconDomain /></span>
               Plan de los agentes
             </div>
-            <span className="kicker">cap $4/dominio · warmup automático</span>
+            {/* <span className="kicker">cap $4/dominio · warmup automático</span> */}
           </header>
           <div className="body">
             {[

@@ -149,7 +149,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <Topbar screen={screen} companyName={company?.name} />
+      <Topbar screen={screen} companyName={company?.name} onLogoClick={handleReset} />
       {screen === "landing" && (
         <LandingScreen
           onSubmit={handleLandingSubmit}
