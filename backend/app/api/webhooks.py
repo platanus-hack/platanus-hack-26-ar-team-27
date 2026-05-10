@@ -25,4 +25,7 @@ async def mailgun_inbound(request: Request, db: Session = Depends(get_db)) -> di
     except Exception:
         form = await request.form()
         payload = {k: v for k, v in form.items()}
-    return process_inbound(db, payload)
+    result = process_inbound(db, payload)
+    if not result.get("accepted"):
+        raise HTTPException(401, "invalid signature")
+    return result

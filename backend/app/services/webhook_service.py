@@ -111,8 +111,32 @@ def process_event(
     return {"accepted": True, "event_type": event_type}
 
 
-def process_inbound(session: Session, payload: dict[str, Any]) -> dict[str, Any]:
-    we = _persist_webhook(session, kind="inbound", valid=True, payload=payload)
+def process_inbound(
+    session: Session,
+    payload: dict[str, Any],
+    *,
+    mailgun: MailgunClient | None = None,
+) -> dict[str, Any]:
+    mailgun = mailgun or get_mailgun_client()
+    valid = mailgun.validate_webhook_signature(
+        timestamp=str(payload.get("timestamp") or ""),
+        token=str(payload.get("token") or ""),
+        signature=str(payload.get("signature") or ""),
+    )
+    we = _persist_webhook(session, kind="inbound", valid=valid, payload=payload)
+    if not valid:
+        record_audit(
+            session,
+            actor="webhook",
+            tool_name="mailgun_inbound_webhook",
+            decision="webhook_signature_invalid",
+            side_effect_level=SideEffectLevel.EXTERNAL_READ,
+            request={"recipient": payload.get("recipient")},
+        )
+        we.processing_status = "rejected"
+        session.flush()
+        return {"accepted": False, "reason": "signature_invalid"}
+
     we.processing_status = "processed"
     session.flush()
     return {"accepted": True}
