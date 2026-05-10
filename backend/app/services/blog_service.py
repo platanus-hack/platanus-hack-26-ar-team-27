@@ -341,19 +341,27 @@ def publish_blog(
         logger.info("vercel domain already attached: %s", subdomain_host)
 
     # Add CNAME at Spaceship: blog → cname.vercel-dns.com
+    # Spaceship's PUT replaces the zone with `items`, so we merge: list
+    # current records, drop any prior `blog` CNAME, append ours, PUT all.
     try:
-        spaceship_client.save_dns_records(
-            email_domain,
-            [
-                {
-                    "type": "CNAME",
-                    "name": "blog",
-                    "cname": settings.vercel_dns_target,
-                    "ttl": 600,
-                }
-            ],
-            force=False,
+        listing = spaceship_client.list_dns_records(email_domain).body
+        current_items = listing.get("items") or listing.get("records") or []
+        merged: list[dict] = []
+        for rec in current_items:
+            rtype = (rec.get("type") or "").upper()
+            rname = rec.get("name") or rec.get("host") or ""
+            if rtype == "CNAME" and rname == "blog":
+                continue  # drop stale blog CNAME if any — re-publish path
+            merged.append(rec)
+        merged.append(
+            {
+                "type": "CNAME",
+                "name": "blog",
+                "cname": settings.vercel_dns_target,
+                "ttl": 600,
+            }
         )
+        spaceship_client.save_dns_records(email_domain, merged, force=True)
     except Exception as exc:
         publication.status = "dns_failed"
         publication.error_message = str(exc)

@@ -36,9 +36,16 @@ def seed_domains(session: Session, company_id: str, domains: list[str]) -> list[
     out: list[PurchasedDomain] = []
     for d in domains:
         d = d.strip().lower()
-        existing = session.query(PurchasedDomain).filter_by(domain=d).one_or_none()
+        # Scope existence to this company. Since migration 0007 dropped the
+        # global unique on `domain`, multiple companies can each have their
+        # own row pointing at the same name — we want to find OUR row, not
+        # accidentally hijack someone else's.
+        existing = (
+            session.query(PurchasedDomain)
+            .filter_by(company_id=company.id, domain=d)
+            .one_or_none()
+        )
         if existing is not None:
-            existing.company_id = company.id
             existing.status = (
                 existing.status
                 if existing.status in ("dns_pending", "dns_verified", "active_for_demo", "active")

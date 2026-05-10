@@ -60,6 +60,15 @@ def plan_domains(session: Session, company_id: str) -> DomainPlan:
     settings = get_settings()
     raw_required = max(1, (company.target_company_count + 24) // 25)
     capped = min(raw_required, settings.domain_purchase_max_count, settings.HARD_DOMAIN_COUNT_CEILING)
+    fixed = (settings.demo_fixed_domain or "").strip().lower()
+    if fixed:
+        return DomainPlan(
+            company_id=company.id,
+            target_company_count=company.target_company_count,
+            required_domains=1,
+            capped_domains=1,
+            suggested_candidates=[fixed],
+        )
     return DomainPlan(
         company_id=company.id,
         target_company_count=company.target_company_count,
@@ -80,6 +89,30 @@ def purchase_domains(
     company = get_company_or_404(session, company_id)
     require_confirmed(company)
     settings = get_settings()
+
+    # Demo override: skip Porkbun entirely and seed the fixed demo domain.
+    fixed = (settings.demo_fixed_domain or "").strip().lower()
+    if fixed:
+        from app.services.seed_real_domains import seed_domains
+
+        seeded = seed_domains(session, company.id, [fixed])
+        record_audit(
+            session,
+            actor="domain-purchase",
+            tool_name="purchase_domains",
+            decision="demo_fixed_domain",
+            side_effect_level=SideEffectLevel.PURCHASE,
+            request={"company_id": company_id, "execute": execute},
+            response={"reason": "demo_fixed_domain set", "domain": fixed},
+        )
+        return DomainPurchaseResult(
+            company_id=company.id,
+            dry_run=True,
+            purchased=[PurchasedDomainOut.model_validate(d) for d in seeded],
+            rejected=[],
+            audit_decision="demo_fixed_domain",
+        )
+
     plan = plan_domains(session, company_id)
 
     # If the company already has domains marked purchased/external (e.g. seeded

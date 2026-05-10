@@ -49,6 +49,11 @@ class Settings(BaseSettings):
     domain_purchase_max_price_usd: float = 4.00
     domain_purchase_domains_per_25_companies: int = 1
 
+    # Demo override: when non-empty, plan/purchase short-circuit and every
+    # company is seeded with this domain instead of buying or generating
+    # candidates. Used by mail + blog flows alike.
+    demo_fixed_domain: str = "mt2-gtm.xyz"
+
     mailgun_api_key: str = ""
     mailgun_base_url: str = "https://api.mailgun.net"
     mailgun_region: Literal["US", "EU"] = "US"
