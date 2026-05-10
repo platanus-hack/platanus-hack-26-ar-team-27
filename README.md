@@ -1,6 +1,6 @@
 # GTM B2B MVP — team-27 · Platanus Hack 26 Buenos Aires
 
-<img src="./project-logo.png" alt="Project Logo" />
+<img src="https://github.com/user-attachments/assets/64d84ac9-20fb-4b51-aa1f-5643f7af42af" alt="Project Logo" />
 
 **Track:** 🗼 Vertical AI
 
