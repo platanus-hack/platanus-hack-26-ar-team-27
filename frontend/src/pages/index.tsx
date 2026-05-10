@@ -1,7 +1,7 @@
 import { useState } from "react";
-import type { CompanyOut, DashboardData } from "@/lib/types";
+import type { CompanyOut, DashboardData, CampaignResearchResult } from "@/lib/types";
 import type { ConfirmPayload } from "@/lib/api";
-import { getStreamToken, streamDiagnostic, confirmCompany } from "@/lib/api";
+import { getStreamToken, streamDiagnostic, confirmCompany, researchTargets } from "@/lib/api";
 import Topbar from "@/components/Topbar";
 import LandingScreen from "@/components/screens/LandingScreen";
 import OnboardingScreen from "@/components/screens/OnboardingScreen";
@@ -20,6 +20,7 @@ export default function App() {
   const [company, setCompany] = useState<CompanyOut | null>(null);
   const [rawInput, setRawInput] = useState("");
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [preloadedResearch, setPreloadedResearch] = useState<CampaignResearchResult | null>(null);
 
   async function handleLandingSubmit(prompt: string, files: File[]) {
     setIsLoading(true);
@@ -86,18 +87,23 @@ export default function App() {
   async function handleConfirm(payload: ConfirmPayload) {
     if (!company) return;
     setIsLoading(true);
-    setLoadingStep("Confirmando startup…");
     setOnboardingError("");
     try {
+      setLoadingStep("Confirmando startup…");
       const confirmed = await confirmCompany(company.id, payload);
       setCompany(confirmed);
+
+      setLoadingStep("Buscando prospects con IA… (puede tardar ~30 s)");
+      const research = await researchTargets(confirmed.id, 6);
+      setPreloadedResearch(research);
+
       setScreen("stage");
     } catch (e) {
       console.error("Confirm error:", e);
       setOnboardingError(
         getErrorMessage(
           e,
-          "No pudimos confirmar la startup. Revisá los datos e intentá de nuevo.",
+          "No pudimos confirmar la startup o buscar prospects. Revisá los datos e intentá de nuevo.",
         ),
       );
     } finally {
@@ -120,6 +126,7 @@ export default function App() {
     setRawInput("");
     setLandingError("");
     setOnboardingError("");
+    setPreloadedResearch(null);
   }
 
   function handleLandingInputChange() {
@@ -167,6 +174,7 @@ export default function App() {
           company={company}
           rawInput={rawInput}
           onDone={handleStageDone}
+          preloadedResearch={preloadedResearch}
         />
       )}
       {screen === "dashboard" && dashboardData && (

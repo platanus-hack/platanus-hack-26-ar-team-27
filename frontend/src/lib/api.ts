@@ -1,5 +1,6 @@
 import type {
   CompanyOut,
+  CampaignOut,
   DomainPlan,
   DomainPurchaseResult,
   PurchasedDomainOut,
@@ -208,6 +209,10 @@ export async function generateDrafts(
   campaignId: string
 ): Promise<EmailDraftOut[]> {
   return post<EmailDraftOut[]>(`/campaigns/${campaignId}/drafts`);
+}
+
+export async function getCampaign(campaignId: string): Promise<CampaignOut> {
+  return get<CampaignOut>(`/campaigns/${campaignId}`);
 }
 
 export async function approveDrafts(

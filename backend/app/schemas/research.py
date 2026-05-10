@@ -17,6 +17,7 @@ class TargetCompanyOut(TargetCompanyIn):
     score: float | None = None
     score_rationale: str | None = None
     selection_status: str
+    evidence_url: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -27,6 +28,8 @@ class ContactOut(BaseModel):
     title: str | None
     email: str | None
     validation_status: str
+    linkedin_url: str | None = None
+    target_company_id: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -50,6 +53,7 @@ class EmailDraftOut(BaseModel):
     subject: str
     body_text: str
     status: str
+    personalization_notes: str | None = None
 
     model_config = {"from_attributes": True}
 

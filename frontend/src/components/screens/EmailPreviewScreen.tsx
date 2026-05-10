@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
-import type { DashboardData } from "@/lib/types";
+import type { DashboardData, EmailDraftOut, TargetCompanyOut, ContactOut } from "@/lib/types";
+import { approveDrafts, sendCampaign } from "@/lib/api";
 
 interface EmailPreviewScreenProps {
   data: DashboardData;
@@ -8,74 +9,158 @@ interface EmailPreviewScreenProps {
 }
 
 export default function EmailPreviewScreen({ data, onBack }: EmailPreviewScreenProps) {
-  const { company, domains, targets, contacts, drafts } = data;
+  const { company, domains, targets, contacts, drafts, campaignId } = data;
   const [activeIdx, setActiveIdx] = useState(0);
-  const senderUser = company.name.split(" ")[0].toLowerCase();
-  const fromAddr = domains[0] ? `${senderUser}@${domains[0].domain}` : `${senderUser}@outbound.io`;
+  const [approveStatus, setApproveStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [sendStatus, setSendStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
 
-  const allItems = drafts.length > 0 ? drafts : targets.map((t, i) => ({
-    id: t.id,
-    contact_id: "",
-    target_company_id: t.id,
-    from_email: fromAddr,
-    subject: `${t.name} — propuesta personalizada`,
-    body_text: `Hola,\n\nVi que ${t.name} ${t.score_rationale ?? "matchea perfecto con nuestro ICP"}.\n\n¿Te tiro 3 horarios esta semana para una demo de 15 minutos?\n\nSaludos,\n${company.name.split(" ")[0]}`,
-    status: "draft",
-  }));
+  // ── helpers para email addresses reales ──────────────────────────────
+  const primaryFromEmail =
+    domains[0]?.warmup_email ?? `outbound@${domains[0]?.domain ?? "outbound.io"}`;
+  const altFromEmail =
+    domains[1]?.warmup_email ?? (domains[1] ? `outbound@${domains[1].domain}` : null);
 
-  const currentItem = allItems[activeIdx];
+  // ── construir la lista de ítems con joins por ID ─────────────────────
+  // Si hay drafts, usar drafts. Si no, construir placeholders desde targets.
+  const allItems: (EmailDraftOut & { _target?: TargetCompanyOut; _contact?: ContactOut })[] =
+    drafts.length > 0
+      ? drafts.map(d => ({
+          ...d,
+          _target: targets.find(t => t.id === d.target_company_id),
+          _contact: contacts.find(c => c.id === d.contact_id),
+        }))
+      : targets.map(t => {
+          const contact = contacts.find(c => c.target_company_id === t.id);
+          return {
+            id: t.id,
+            contact_id: contact?.id ?? "",
+            target_company_id: t.id,
+            from_email: primaryFromEmail,
+            subject: `${t.name} — propuesta personalizada`,
+            body_text: [
+              `Hola${contact?.full_name ? " " + contact.full_name.split(" ")[0] : ""},`,
+              "",
+              `Construimos ${company.name} pensando en empresas como ${t.name}. ${t.score_rationale ?? "Matchea perfecto con el perfil de clientes que más valoramos."}`,
+              "",
+              "¿Tenés 15 minutos esta semana para una demo rápida?",
+              "",
+              `Saludos,\n${company.name.split(" ")[0]}`,
+              "",
+              "%unsubscribe_url%",
+            ].join("\n"),
+            status: "draft",
+            personalization_notes: t.score_rationale ?? null,
+            _target: t,
+            _contact: contact,
+          };
+        });
 
-  function getSubjectForIdx(i: number) {
-    if (drafts[i]) return drafts[i].subject;
-    const t = targets[i];
-    if (!t) return "Email personalizado";
-    const contact = contacts.find((c) => c.id === drafts[i]?.contact_id)?.full_name?.split(" ")[0] ?? t.name.split(" ")[0];
-    const subjects = [
-      `${contact} — primer feedback sobre ${company.name.split(" ")[0]}`,
-      `${contact}, una idea para ${t.name}`,
-      `90s sobre ${company.name.split(" ")[0]} · ${t.name}`,
-      `${contact} — pregunta rápida`,
-    ];
-    return subjects[i % subjects.length] ?? subjects[0];
+  const current = allItems[activeIdx];
+  const currentTarget = current?._target;
+  const currentContact = current?._contact;
+
+  // ── acciones ─────────────────────────────────────────────────────────
+  async function handleApproveAll() {
+    if (!campaignId || approveStatus !== "idle") return;
+    setApproveStatus("loading");
+    try {
+      await approveDrafts(campaignId, true);
+      setApproveStatus("done");
+    } catch {
+      setApproveStatus("error");
+    }
   }
+
+  async function handleSendAll() {
+    if (!campaignId || sendStatus !== "idle") return;
+    // Asegurarse que primero estén aprobados
+    if (approveStatus === "idle") await handleApproveAll();
+    setSendStatus("loading");
+    try {
+      await sendCampaign(campaignId, false); // execute=false → modo seguro
+      setSendStatus("done");
+    } catch {
+      setSendStatus("error");
+    }
+  }
+
+  // ── label del botón "Aprobar y enviar" ───────────────────────────────
+  const approveLabel =
+    approveStatus === "loading" ? "Aprobando…"
+    : approveStatus === "done" ? "Aprobados ✓"
+    : approveStatus === "error" ? "Error al aprobar"
+    : `Aprobar y enviar ${allItems.length}`;
+
+  const sendLabel =
+    sendStatus === "loading" ? "Enviando…"
+    : sendStatus === "done" ? "Enviados ✓"
+    : sendStatus === "error" ? "Error al enviar"
+    : "Enviar ahora";
 
   return (
     <div className="lp-screen-wrap fade-in">
+      {/* ── Toolbar ─────────────────────────────────────────────────── */}
       <div className="lp-toolbar">
         <button className="btn btn-ghost" onClick={onBack}>← Volver al dashboard</button>
         <div className="url-bar">
           <span className="lock">●</span>
-          inbox.tm2.io / {fromAddr}
+          outbox · {company.name}
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn">Editar tono global</button>
-          <button className="btn btn-dark">Aprobar y enviar {allItems.length}</button>
+          <button
+            className="btn btn-dark"
+            onClick={handleApproveAll}
+            disabled={approveStatus !== "idle" || !campaignId}
+          >
+            {approveLabel}
+          </button>
         </div>
       </div>
 
       <div className="inbox-frame">
+        {/* ── Sidebar ───────────────────────────────────────────────── */}
         <aside className="inbox-side">
+          {/* Cuenta de envío */}
           <div className="acc-pick">
             <span className="kicker">enviando desde</span>
-            <div className="acc">{fromAddr}</div>
+            <div className="acc">{primaryFromEmail}</div>
             <div className="acc-meta">
-              <span className="rep-dot" /> reputación 92/100 · listo
+              <span className="rep-dot" />
+              {domains.length > 0 ? `${domains.length} dominio${domains.length > 1 ? "s" : ""} · warmup en curso` : "warmup en curso"}
             </div>
-            {domains[1] && (
-              <div className="acc-alt">alterna con: <b>{senderUser}@{domains[1].domain}</b></div>
+            {altFromEmail && (
+              <div className="acc-alt">alterna con: <b>{altFromEmail}</b></div>
             )}
           </div>
+
+          {/* Folders */}
           <div className="inbox-folders">
-            <div className="folder is-active"><span>Drafts pendientes</span><span className="count">{allItems.length}</span></div>
-            <div className="folder"><span>Aprobados</span><span className="count">0</span></div>
-            <div className="folder"><span>Enviados</span><span className="count">0</span></div>
-            <div className="folder"><span>Replies</span><span className="count">0</span></div>
+            <div className="folder is-active">
+              <span>Drafts pendientes</span>
+              <span className="count">{allItems.length}</span>
+            </div>
+            <div className="folder">
+              <span>Aprobados</span>
+              <span className="count">{approveStatus === "done" ? allItems.length : 0}</span>
+            </div>
+            <div className="folder">
+              <span>Enviados</span>
+              <span className="count">{sendStatus === "done" ? allItems.length : 0}</span>
+            </div>
+            <div className="folder">
+              <span>Replies</span>
+              <span className="count">0</span>
+            </div>
           </div>
+
+          {/* Lista de emails */}
           <div className="inbox-list">
             {allItems.map((item, i) => {
-              const t = targets[i] ?? targets[0];
-              const initials = t ? t.name.split(" ").map((w) => w[0]).slice(0, 2).join("") : "??";
-              const subj = getSubjectForIdx(i);
+              const t = item._target;
+              const c = item._contact;
+              const initials = t
+                ? t.name.split(" ").map(w => w[0]).slice(0, 2).join("")
+                : "??";
               return (
                 <button
                   key={item.id}
@@ -86,10 +171,16 @@ export default function EmailPreviewScreen({ data, onBack }: EmailPreviewScreenP
                   <div className="il-mid">
                     <div className="il-top">
                       <span className="who">{t?.name ?? "Prospect"}</span>
-                      {t?.score != null && <span className="fit">{Math.round(t.score * 100)}</span>}
+                      {t?.score != null && (
+                        <span className="fit">{Math.round(t.score * 100)}</span>
+                      )}
                     </div>
-                    <div className="il-sub">{subj}</div>
-                    <div className="il-pre">Hola…</div>
+                    <div className="il-sub">{item.subject}</div>
+                    <div className="il-pre">
+                      {c?.full_name
+                        ? `→ ${c.full_name}${c.title ? ` · ${c.title}` : ""}`
+                        : item.body_text.slice(0, 50) + "…"}
+                    </div>
                   </div>
                 </button>
               );
@@ -97,49 +188,107 @@ export default function EmailPreviewScreen({ data, onBack }: EmailPreviewScreenP
           </div>
         </aside>
 
+        {/* ── Panel de email ────────────────────────────────────────── */}
         <main className="email-detail">
-          {currentItem ? (
+          {current ? (
             <>
               <div className="ed-toolbar">
-                <span className="kicker">draft #{activeIdx + 1} · personalizado</span>
+                <span className="kicker">draft #{activeIdx + 1} de {allItems.length} · personalizado</span>
                 <div className="ed-btns">
-                  <button className="btn btn-ghost btn-sm">Regenerar</button>
-                  <button className="btn btn-sm">Aprobar</button>
-                  <button className="btn btn-dark btn-sm">Enviar ahora</button>
+                  <button
+                    className="btn btn-dark btn-sm"
+                    onClick={handleSendAll}
+                    disabled={sendStatus !== "idle" || !campaignId}
+                  >
+                    {sendLabel}
+                  </button>
                 </div>
               </div>
+
               <div className="ed-head">
-                <h1 className="ed-subj">{currentItem.subject}</h1>
+                <h1 className="ed-subj">{current.subject}</h1>
                 <div className="ed-meta">
+                  {/* De */}
                   <div className="row">
                     <span className="k">De</span>
-                    <span className="v">{company.name} &lt;{fromAddr}&gt;</span>
+                    <span className="v">{company.name} &lt;{current.from_email ?? primaryFromEmail}&gt;</span>
                   </div>
+
+                  {/* Para */}
                   <div className="row">
                     <span className="k">Para</span>
-                    <span className="v">
-                      {contacts[activeIdx]?.full_name ?? targets[activeIdx]?.name ?? "Prospect"}{" "}
-                      &lt;{contacts[activeIdx]?.email ?? `contact@${targets[activeIdx]?.domain ?? "example.com"}`}&gt;
+                    <span className="v" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span>
+                        {currentContact?.full_name ?? currentTarget?.name ?? "Prospect"}
+                        {currentContact?.title && (
+                          <span style={{ color: "var(--fg-2)", fontWeight: 400 }}> · {currentContact.title}</span>
+                        )}
+                        {" "}&lt;{currentContact?.email ?? `contacto@${currentTarget?.domain ?? "—"}`}&gt;
+                      </span>
+                      {currentContact?.linkedin_url && (
+                        <a
+                          href={currentContact.linkedin_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            fontSize: 11,
+                            color: "var(--fg-3)",
+                            textDecoration: "underline",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          LinkedIn →
+                        </a>
+                      )}
                     </span>
                   </div>
-                  {targets[activeIdx] && (
+
+                  {/* Empresa */}
+                  {currentTarget && (
                     <div className="row">
                       <span className="k">Empresa</span>
-                      <span className="v">{targets[activeIdx].name} · {targets[activeIdx].industry ?? "—"} · {targets[activeIdx].location ?? "—"}</span>
+                      <span className="v" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <span>
+                          {currentTarget.name}
+                          {currentTarget.industry && ` · ${currentTarget.industry}`}
+                          {currentTarget.location && ` · ${currentTarget.location}`}
+                          {currentTarget.size_range && ` · ${currentTarget.size_range} emp.`}
+                        </span>
+                        {currentTarget.evidence_url && (
+                          <a
+                            href={currentTarget.evidence_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ fontSize: 11, color: "var(--fg-3)", textDecoration: "underline" }}
+                          >
+                            fuente →
+                          </a>
+                        )}
+                      </span>
                     </div>
                   )}
-                  {targets[activeIdx]?.score != null && (
+
+                  {/* Fit score */}
+                  {currentTarget?.score != null && (
                     <div className="row">
                       <span className="k">Fit score</span>
-                      <span className="v"><span className="fit-pill">{Math.round((targets[activeIdx].score ?? 0) * 100)} / 100</span></span>
+                      <span className="v">
+                        <span className="fit-pill">{Math.round((currentTarget.score ?? 0) * 100)} / 100</span>
+                      </span>
                     </div>
                   )}
                 </div>
               </div>
+
+              {/* Cuerpo del email */}
               <div className="ed-body">
-                {currentItem.body_text.split("\n").map((p, i) => {
+                {current.body_text.split("\n").map((p, i) => {
                   if (!p.trim()) return <div key={i} style={{ height: 6 }} />;
-                  const toHighlight = [company.name, targets[activeIdx]?.name ?? "", targets[activeIdx]?.location ?? ""].filter(Boolean);
+                  const toHighlight = [
+                    company.name,
+                    currentTarget?.name ?? "",
+                    currentTarget?.location ?? "",
+                  ].filter(Boolean);
                   let nodes: (string | JSX.Element)[] = [p];
                   toHighlight.forEach((phrase, j) => {
                     const next: (string | JSX.Element)[] = [];
@@ -156,11 +305,25 @@ export default function EmailPreviewScreen({ data, onBack }: EmailPreviewScreenP
                   return <p key={i}>{nodes}</p>;
                 })}
               </div>
-              {targets[activeIdx]?.score_rationale && (
+
+              {/* Por qué este prospect */}
+              {(current.personalization_notes ?? currentTarget?.score_rationale) && (
                 <div className="ed-foot">
                   <div className="why">
-                    <span className="kicker">por qué este draft</span>
-                    <p>Anclamos el primer párrafo en <b>{targets[activeIdx].score_rationale}</b>.</p>
+                    <span className="kicker">por qué este prospect</span>
+                    <p>
+                      {current.personalization_notes ?? currentTarget?.score_rationale}
+                    </p>
+                    {currentTarget?.evidence_url && (
+                      <a
+                        href={currentTarget.evidence_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ fontSize: 11.5, color: "var(--fg-3)", textDecoration: "underline" }}
+                      >
+                        Ver fuente →
+                      </a>
+                    )}
                   </div>
                 </div>
               )}

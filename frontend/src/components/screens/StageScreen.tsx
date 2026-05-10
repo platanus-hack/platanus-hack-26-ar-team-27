@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type {
   CompanyOut, PurchasedDomainOut, DnsConfigureResult, DnsRecordOut,
   TargetCompanyOut, ContactOut, EmailDraftOut, DashboardData, LogEntry, ArtifactEntry,
+  CampaignResearchResult,
 } from "@/lib/types";
 import {
   planDomains, purchaseDomains, listDomains,
@@ -71,9 +72,10 @@ interface StageScreenProps {
   company: CompanyOut;
   rawInput: string;
   onDone: (data: DashboardData) => void;
+  preloadedResearch?: CampaignResearchResult | null;
 }
 
-export default function StageScreen({ company, rawInput, onDone }: StageScreenProps) {
+export default function StageScreen({ company, rawInput, onDone, preloadedResearch }: StageScreenProps) {
   const [activeIdx, setActiveIdx] = useState(0);
   const [doneIdx, setDoneIdx] = useState(0);
   const [agentStates, setAgentStates] = useState<Record<AgentName, AgentState>>(makeInitialStates);
@@ -324,8 +326,14 @@ export default function StageScreen({ company, rawInput, onDone }: StageScreenPr
     let campaignId: string | null = null;
 
     try {
-      const researchResult = await researchTargets(company.id, 6);
-      log("research", `${researchResult.targets.length} empresas encontradas`);
+      let researchResult: CampaignResearchResult;
+      if (preloadedResearch) {
+        researchResult = preloadedResearch;
+        log("research", `${researchResult.targets.length} empresas encontradas (LLM precargado)`);
+      } else {
+        researchResult = await researchTargets(company.id, 6);
+        log("research", `${researchResult.targets.length} empresas encontradas`);
+      }
       campaignId = researchResult.campaign_id;
       researchTargetsList = researchResult.targets;
       contactsList = researchResult.contacts;
