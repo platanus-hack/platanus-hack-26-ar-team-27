@@ -17,11 +17,8 @@ export default function Topbar({ screen, companyName }: TopbarProps) {
   return (
     <header className="topbar">
       <div className="brand">
-        <div className="brand-mark">T</div>
-        <div className="brand-text">
-          <span className="name">TakeMe2Market</span>
-          <span className="sub">multi-agent · GTM</span>
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.svg" alt="TakeMe2Market" style={{ height: 36, display: "block" }} />
       </div>
 
       {(screen === "stage" || screen === "dashboard" || screen === "emailPreview") && companyName && (

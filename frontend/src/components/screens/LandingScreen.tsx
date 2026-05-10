@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import type { ChangeEvent } from "react";
 
 const EXAMPLES = [
@@ -45,10 +45,25 @@ export default function LandingScreen({
   loadingStep,
   submitError,
 }: LandingScreenProps) {
-  const [prompt, setPrompt] = useState(EXAMPLES[0].raw);
+  const [prompt, setPrompt] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [fileError, setFileError] = useState("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Typewriter effect for the h1
+  const FULL_TEXT = "Take me to market";
+  const [typedCount, setTypedCount] = useState(0);
+  const [typingDone, setTypingDone] = useState(false);
+
+  useEffect(() => {
+    if (typedCount >= FULL_TEXT.length) {
+      setTypingDone(true);
+      return;
+    }
+    const delay = typedCount === 0 ? 300 : 55; // small pause before starting
+    const t = setTimeout(() => setTypedCount((c) => c + 1), delay);
+    return () => clearTimeout(t);
+  }, [typedCount]);
 
   function handleOpenFilePicker() {
     if (isLoading) return;
@@ -91,23 +106,34 @@ export default function LandingScreen({
   return (
     <div className="landing-shell">
       <div className="landing-hero fade-up">
-        <div className="kicker">
-          <span className="dots">
-            <i style={{ background: "var(--diagnostic)" }} />
-            <i style={{ background: "var(--domain)" }} />
-            <i style={{ background: "var(--dns)" }} />
-            <i style={{ background: "var(--warmup)" }} />
-            <i style={{ background: "var(--research)" }} />
-          </span>
-          Multi-agent · GTM para startups · v0.5
-        </div>
         <h1>
-          Take me to <em>market</em>.<br />
-          De pitch a primer outbound, en una corrida.
+          {(() => {
+            const typed = FULL_TEXT.slice(0, typedCount);
+            const marketStart = "Take me to ".length;
+            const marketEnd = "Take me to market".length;
+            if (typedCount <= marketStart) {
+              // still typing the plain part
+              return <>{typed}<span className="tw-caret" /></>;
+            } else if (typedCount <= marketEnd) {
+              // typing inside "market"
+              return <>
+                {"Take me to "}
+                <em>{typed.slice(marketStart)}</em>
+                <span className="tw-caret" />
+              </>;
+            } else {
+              // done — show full text with permanent caret
+              return <>
+                {"Take me to "}
+                <em>{"market"}</em>
+                <span className="tw-caret" />
+              </>;
+            }
+          })()}
         </h1>
-        <p className="sub">
-          Contanos qué hace tu startup. Cinco agentes especialistas se encargan del setup completo: leen tu pitch, compran dominios, configuran DNS, calientan los inboxes y mandan los primeros emails personalizados a tus prospects ideales.
-        </p>
+        <span className="kicker" style={{ opacity: typingDone ? 1 : 0, transition: "opacity 0.6s ease" }}>
+          De pitch a primer outbound, en una corrida.
+        </span>
       </div>
 
       <div className="prompt-box fade-up" style={{ animationDelay: "0.1s", position: "relative" }}>
@@ -138,7 +164,7 @@ export default function LandingScreen({
             onInputChange?.();
             setPrompt(e.target.value);
           }}
-          placeholder="Contanos qué hace tu startup, a quién apuntás y cuántos prospects querés alcanzar…"
+          placeholder="Contanos qué hace tu startup y nos encargamos del resto..."
           disabled={isLoading}
           rows={5}
         />
