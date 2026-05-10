@@ -138,41 +138,169 @@ def _pick_purchased_domain(company: Company) -> PurchasedDomain:
 
 
 _FALLBACK_HTML_TEMPLATE = """<!doctype html>
-<html lang="en"><head>
+<html lang="es"><head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>{title}</title>
 <style>
-  :root {{ --fg:#111; --muted:#555; --bg:#fafaf7; --accent:#0b5cff; }}
+  :root {{
+    --bg:#f5f1e8;
+    --bg-soft:#fbf8f2;
+    --surface:rgba(255,255,255,0.68);
+    --fg:#161514;
+    --muted:#666157;
+    --line:rgba(22,21,20,0.12);
+    --accent:#b45d3d;
+    --accent-soft:rgba(180,93,61,0.12);
+    --shadow:0 20px 60px rgba(31,26,21,0.08);
+  }}
   * {{ box-sizing:border-box; }}
-  body {{ font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif; margin:0; color:var(--fg); background:var(--bg); }}
-  .wrap {{ max-width:760px; margin:0 auto; padding:64px 24px; }}
-  header h1 {{ font-size:2.4rem; margin:0 0 12px; letter-spacing:-0.02em; }}
-  header p {{ color:var(--muted); font-size:1.1rem; }}
-  article {{ margin:48px 0; padding-bottom:32px; border-bottom:1px solid #e5e5e0; }}
-  article:last-child {{ border-bottom:none; }}
-  article h2 {{ font-size:1.5rem; margin:0 0 8px; }}
-  article .meta {{ color:var(--muted); font-size:0.9rem; margin-bottom:16px; }}
-  article p {{ line-height:1.7; }}
-  footer {{ color:var(--muted); font-size:0.85rem; margin-top:64px; }}
+  body {{
+    margin:0;
+    color:var(--fg);
+    background:
+      radial-gradient(circle at top left, rgba(180,93,61,0.12), transparent 34%),
+      linear-gradient(180deg, var(--bg-soft) 0%, var(--bg) 100%);
+    font-family:"Avenir Next","Helvetica Neue","Segoe UI",sans-serif;
+  }}
+  main.wrap {{
+    max-width:1080px;
+    margin:0 auto;
+    padding:40px 20px 80px;
+  }}
+  .hero {{
+    padding:24px 0 32px;
+    margin-bottom:20px;
+    border-top:1px solid var(--line);
+  }}
+  .eyebrow {{
+    display:inline-flex;
+    align-items:center;
+    gap:10px;
+    padding:8px 14px;
+    border:1px solid var(--line);
+    border-radius:999px;
+    background:rgba(255,255,255,0.45);
+    color:var(--muted);
+    font-size:0.74rem;
+    letter-spacing:0.16em;
+    text-transform:uppercase;
+  }}
+  .eyebrow::before {{
+    content:"";
+    width:8px;
+    height:8px;
+    border-radius:999px;
+    background:var(--accent);
+    box-shadow:0 0 0 6px var(--accent-soft);
+  }}
+  header h1 {{
+    max-width:8ch;
+    margin:20px 0 12px;
+    font-family:"Iowan Old Style","Palatino Linotype","Book Antiqua",serif;
+    font-size:clamp(3rem,8vw,5.6rem);
+    line-height:0.94;
+    letter-spacing:-0.05em;
+    text-wrap:balance;
+  }}
+  header p {{
+    max-width:620px;
+    margin:0;
+    color:var(--muted);
+    font-size:1.05rem;
+    line-height:1.75;
+  }}
+  .editorial-grid {{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:18px;
+  }}
+  article {{
+    position:relative;
+    padding:28px;
+    border:1px solid var(--line);
+    border-radius:28px;
+    background:var(--surface);
+    backdrop-filter:blur(8px);
+    box-shadow:var(--shadow);
+    overflow:hidden;
+  }}
+  article::after {{
+    content:"";
+    position:absolute;
+    inset:auto -18% -32% auto;
+    width:220px;
+    height:220px;
+    border-radius:999px;
+    background:var(--accent-soft);
+    pointer-events:none;
+  }}
+  article h2 {{
+    position:relative;
+    margin:0 0 12px;
+    font-family:"Iowan Old Style","Palatino Linotype","Book Antiqua",serif;
+    font-size:clamp(1.7rem,3vw,2.45rem);
+    line-height:1.02;
+    letter-spacing:-0.03em;
+    text-wrap:balance;
+  }}
+  article .meta {{
+    position:relative;
+    margin-bottom:18px;
+    color:var(--muted);
+    font-size:0.76rem;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+  }}
+  article p {{
+    position:relative;
+    margin:0 0 14px;
+    max-width:60ch;
+    line-height:1.82;
+    font-size:1rem;
+  }}
+  article p:last-child {{ margin-bottom:0; }}
+  footer {{
+    margin-top:28px;
+    padding-top:18px;
+    border-top:1px solid var(--line);
+    color:var(--muted);
+    font-size:0.82rem;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+  }}
   a {{ color:var(--accent); }}
-</style></head>
+</style>
+</head>
 <body><main class="wrap">
-<header><h1>{title}</h1><p>{subtitle}</p></header>
+<header class="hero">
+  <span class="eyebrow">Editorial atemporal</span>
+  <h1>{title}</h1>
+  <p>{subtitle}</p>
+</header>
+<section class="editorial-grid">
 {posts_html}
-<footer>© {company} — built with care.</footer>
+</section>
+<footer>© {company} · criterio editorial sin fecha.</footer>
 </main></body></html>"""
 
 
 _TEMPORAL_MARKERS = (
-    re.compile(r"\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|"
-               r"jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|"
-               r"nov(?:ember)?|dec(?:ember)?)\b", re.IGNORECASE),
+    re.compile(
+        r"\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|"
+        r"jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|"
+        r"nov(?:ember)?|dec(?:ember)?|ene(?:ro)?|feb(?:rero)?|mar(?:zo)?|"
+        r"abr(?:il)?|may(?:o)?|jun(?:io)?|jul(?:io)?|ago(?:sto)?|"
+        r"sep(?:tiembre)?|oct(?:ubre)?|nov(?:iembre)?|dic(?:iembre)?)\b",
+        re.IGNORECASE,
+    ),
     re.compile(r"\b20\d{2}\b"),
     re.compile(r"\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b"),
     re.compile(r"\bQ[1-4]\b", re.IGNORECASE),
     re.compile(r"\bPublished on\b", re.IGNORECASE),
+    re.compile(r"\bPublicado el\b", re.IGNORECASE),
 )
+_SPANISH_HTML_RE = re.compile(r"<html[^>]*\blang=[\"']es(?:-[^\"']*)?[\"']", re.IGNORECASE)
 
 
 def _fallback_html(
@@ -182,88 +310,57 @@ def _fallback_html(
     research: BlogEditorialResearch,
     reason: str | None = None,
 ) -> BlogHtmlResult:
-    title = f"{company.name} Insights"
+    title = f"Perspectivas de {company.name}"
     subtitle = _evergreen_text(
-        company.business_context_summary,
-        fallback=f"Evergreen notes for teams evaluating {research.industry_label}.",
+        f"Notas editoriales para equipos que evalúan {research.industry_label}.",
+        fallback="Notas editoriales de mercado sin referencias temporales.",
     )
     audience = _evergreen_text(
         brief.audience_summary,
-        fallback="their buying committee",
+        fallback="su comité comprador",
     )
     geography = _evergreen_text(
         brief.geography_summary,
-        fallback="their priority markets",
+        fallback="sus mercados prioritarios",
     )
     category = _evergreen_text(
         research.industry_label or brief.industry_label,
-        fallback="their market",
+        fallback="su mercado",
     )
-    primary_angle = _evergreen_text(
-        _first(
-            research.editorial_angles,
-            f"What buyers in {category} need before they commit",
-        ),
-        fallback=f"What buyers in {category} need before they commit",
-    )
-    secondary_angle = _evergreen_text(
-        _first(
-            research.editorial_angles[1:],
-            f"How {audience} evaluate operational trade-offs",
-        ),
-        fallback=f"How {audience} evaluate operational trade-offs",
-    )
-    primary_pain = _evergreen_text(
-        _first(
-            research.pain_points,
-            f"Teams in {category} still need clearer ways to turn priorities into execution.",
-        ),
-        fallback=f"Teams in {category} still need clearer ways to turn priorities into execution.",
-    )
-    secondary_pain = _evergreen_text(
-        _first(
-            research.pain_points[1:],
-            "Buyers keep looking for faster alignment, lower adoption risk and cleaner ROI stories.",
-        ),
-        fallback="Buyers keep looking for faster alignment, lower adoption risk and cleaner ROI stories.",
-    )
+    primary_angle = f"Cómo compra {audience} en {category}"
+    secondary_angle = f"Qué señales reducen fricción en {category}"
     market_language = _evergreen_text(
         ", ".join(research.market_language[:3]),
         fallback=f"{category}, {brief.offer_summary}, {audience}",
     )
     offer_summary = _evergreen_text(brief.offer_summary, fallback=company.name)
-    gtm_summary = _evergreen_text(
-        brief.gtm_summary,
-        fallback="The strongest point of view is the one that sounds operational rather than promotional.",
-    )
 
     posts_html = "\n".join(
         [
             (
                 "<article>"
                 f"<h2>{escape(primary_angle)}</h2>"
-                f"<div class=\"meta\">Audience · {escape(audience)}</div>"
-                f"<p>{escape(company.name)} operates in {escape(category)}, where buying teams often face a simple tension: "
-                f"{escape(primary_pain)} Thought leadership earns attention when it names that friction clearly and avoids generic market talk.</p>"
-                f"<p>For readers in {escape(geography)}, the most useful language is practical and specific: "
-                f"{escape(market_language)}. That is the editorial lane this blog is built to occupy.</p>"
+                f"<div class=\"meta\">Audiencia · {escape(audience)}</div>"
+                f"<p>{escape(company.name)} compite en {escape(category)}, donde los equipos compradores suelen convivir con una tensión concreta: "
+                f"alinear compra, implementación y adopción sin perder foco operativo. El contenido que genera confianza nombra ese problema con claridad y evita el discurso genérico.</p>"
+                f"<p>Para lectores en {escape(geography)}, el lenguaje más útil es práctico y específico: "
+                f"{escape(market_language)}. Ese es el territorio editorial que este blog debe ocupar.</p>"
                 "</article>"
             ),
             (
                 "<article>"
                 f"<h2>{escape(secondary_angle)}</h2>"
-                f"<div class=\"meta\">Category · {escape(category)}</div>"
-                f"<p>{escape(company.name)} sells {escape(offer_summary)}. The relevant story is not the feature list; "
-                f"it is how that offer helps buyers move through procurement, implementation and internal alignment with less friction.</p>"
-                f"<p>{escape(secondary_pain)} The best editorial pieces unpack those trade-offs in plain language and show the reader that the company understands the job behind the purchase.</p>"
+                f"<div class=\"meta\">Categoría · {escape(category)}</div>"
+                f"<p>{escape(company.name)} vende {escape(offer_summary)}. La historia relevante no es la lista de features, sino cómo esa oferta ayuda a atravesar compra, implementación y alineación interna con menos fricción.</p>"
+                f"<p>Los compradores siguen buscando mejor alineación, menor riesgo de adopción y una historia de ROI más clara. Las mejores piezas editoriales traducen esos trade-offs a lenguaje simple y muestran que la empresa entiende el trabajo real que existe detrás de la compra.</p>"
                 "</article>"
             ),
             (
                 "<article>"
-                f"<h2>{escape(company.name)}'s point of view in practice</h2>"
-                f"<div class=\"meta\">Angle · {escape(category)}</div>"
-                f"<p>This site should sound like a team that knows the category from the inside. That means writing about decision quality, operational risk, adoption, execution speed and the hard parts that appear after the sale.</p>"
-                f"<p>{escape(gtm_summary)} A strong editorial cadence turns that perspective into durable market trust instead of one more generic company blog.</p>"
+                f"<h2>{escape(company.name)} y una voz propia en {escape(category)}</h2>"
+                f"<div class=\"meta\">Enfoque · {escape(category)}</div>"
+                f"<p>Este sitio tiene que sonar como un equipo que conoce la categoría desde adentro. Eso implica escribir sobre calidad de decisión, riesgo operativo, adopción, velocidad de ejecución y los problemas que aparecen después de vender.</p>"
+                f"<p>Una cadencia editorial sólida convierte esa mirada en confianza de mercado de largo plazo, en lugar de sumar otro blog corporativo indistinto.</p>"
                 "</article>"
             ),
         ]
@@ -283,21 +380,25 @@ def _fallback_html(
 
 
 _BLOG_SYSTEM = (
-    "You are a senior content designer and B2B editorial strategist. "
-    "You produce a single complete HTML document (no markdown, no commentary) "
-    "for a small company thought-leadership site. "
-    "Output MUST be a valid `<!doctype html>` document with inline CSS, no "
-    "external assets, no JavaScript. Visual style: editorial, generous "
-    "whitespace, strong typographic hierarchy, one accent color, mobile-first. "
-    "Page structure: <header> with company name + tagline, then 3 to 5 "
-    "<article> elements (each: h2 title, small evergreen meta line about "
-    "category, audience or angle, 2-4 short paragraphs), then a <footer>. "
-    "Keep the page timeless: no publication metadata, no timestamps, no "
-    "calendar references, no bylines. Content must be specific to the company "
-    "described — talk about their actual ICP, value prop, researched market "
-    "friction and use cases. Articles should feel like real short-form thought "
-    "leadership from the company, not generic industry commentary. Length per "
-    "article: 120-220 words."
+    "Sos un/a content designer senior y estratega editorial B2B. "
+    "Debés producir un documento HTML completo (sin markdown ni comentarios) "
+    "para un sitio de thought leadership de una pyme. "
+    "El resultado DEBE ser un `<!doctype html>` válido, con CSS inline, sin "
+    "assets externos y sin JavaScript. El documento debe usar `<html lang=\"es\">` "
+    "y todo el texto visible debe estar en español neutro. Dirección de arte: "
+    "minimalismo editorial sobrio pero con personalidad; fondo cálido o marfil, "
+    "mezcla de serif para títulos y sans para cuerpo, mucho aire, bordes finos, "
+    "paneles livianos, detalles sutiles de acento y una composición elegante. "
+    "Nada de look SaaS genérico ni bloques pesados. Mobile-first. Estructura: "
+    "<header> con nombre de la empresa + tagline, luego 3 a 5 <article> "
+    "(cada uno con h2, una meta breve y atemporal sobre categoría, audiencia o "
+    "enfoque, y 2-4 párrafos cortos), y finalmente un <footer>. Mantené el "
+    "contenido atemporal: sin metadata de publicación, sin timestamps, sin "
+    "referencias de calendario y sin bylines. El contenido debe ser específico "
+    "de la empresa: hablar de su ICP real, propuesta de valor, fricción de "
+    "mercado investigada y casos de uso. Los artículos deben sentirse como "
+    "thought leadership breve y real de la empresa, no como commentary genérico "
+    "del sector. Longitud por artículo: 120-220 palabras."
 )
 
 
@@ -325,16 +426,18 @@ def _generate_blog_html(
                 "business_context_summary": company.business_context_summary
                 or "(none provided)",
                 "icp_description": company.icp_description or "(unspecified)",
-                "gtm_strategy": company.gtm_strategy or "(unspecified)",
                 "target_countries": company.target_countries or [],
             },
             "industry_brief": brief.as_prompt_payload(),
             "editorial_research": research.as_prompt_payload(),
             "requirements": [
-                "Return only the full HTML document.",
-                "Use a timeless editorial tone.",
-                "Meta labels must describe category, audience or angle.",
-                "Do not add publication metadata or bylines.",
+                "Devolvé únicamente el documento HTML completo.",
+                "Usá un tono editorial atemporal.",
+                "Las meta labels deben describir categoría, audiencia o enfoque.",
+                "No agregues metadata de publicación ni bylines.",
+                "Todo el texto visible debe estar en español.",
+                "El tag <html> debe declarar lang=\"es\".",
+                "El estilo visual debe verse premium, minimalista y editorial.",
             ],
         },
         ensure_ascii=False,
@@ -370,6 +473,14 @@ def _generate_blog_html(
             research=research,
             reason="anthropic_html_missing_html_tag",
         )
+    if not _SPANISH_HTML_RE.search(html):
+        logger.warning("blog HTML did not declare lang=es; using fallback")
+        return _fallback_html(
+            company=company,
+            brief=brief,
+            research=research,
+            reason="anthropic_html_missing_spanish_lang_tag",
+        )
     if _contains_temporal_markers(html):
         logger.warning("blog HTML contained temporal markers; using fallback")
         return _fallback_html(
@@ -380,7 +491,7 @@ def _generate_blog_html(
         )
 
     title_match = re.search(r"<title[^>]*>([^<]+)</title>", html, re.IGNORECASE)
-    title = title_match.group(1).strip() if title_match else f"{company.name} Blog"
+    title = title_match.group(1).strip() if title_match else f"Blog de {company.name}"
     return BlogHtmlResult(title=title, html=html, mode="anthropic_html")
 
 
@@ -407,7 +518,7 @@ def _evergreen_text(value: str | None, *, fallback: str) -> str:
     secondary = _plain_text(fallback)
     if secondary and not _contains_temporal_markers(secondary):
         return secondary
-    return "Evergreen market context"
+    return "Contexto de mercado atemporal"
 
 
 def _first(values: list[str], fallback: str) -> str:

@@ -40,7 +40,7 @@ def _send_message(
     **_: Any,
 ) -> dict:
     if dry_run:
-        return fx.mailgun_send_message(domain, recipient=(to[0] if to else "n/a"), subject=subject)
+        return fx.mailgun_send_message(domain, recipients=to or ["n/a"], subject=subject)
     return get_mailgun_client().send_message(
         domain, from_addr=from_addr, to=to, subject=subject, text=text, html=html
     ).body

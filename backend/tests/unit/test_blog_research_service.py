@@ -66,7 +66,8 @@ def test_infer_industry_brief_uses_existing_diagnostic_fields():
     assert "predictive-maintenance SaaS" in brief.industry_label
     assert "Plant managers" in brief.audience_summary
     assert brief.geography_summary == "Mexico, Chile"
-    assert "operational ROI" in (brief.gtm_summary or "")
+    assert "gtm_summary" not in brief.as_prompt_payload()
+    assert "operational ROI" not in brief.diagnostic_context
 
 
 def test_blog_editorial_research_parses_json_and_tracks_urls():

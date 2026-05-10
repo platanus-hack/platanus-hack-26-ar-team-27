@@ -6,6 +6,7 @@ from typing import Any
 from app.core.safety import SideEffectLevel
 from app.db.models import PurchasedDomain, WarmupInteraction
 from app.services import dry_run_fixtures as fx
+from app.services.mail_routing import with_internal_log_recipient
 from app.tools.registry import Tool, register_tool
 
 
@@ -39,7 +40,12 @@ def _send_warmup_email(
     dst = session.get(PurchasedDomain, to_domain_id)
     if src is None or dst is None:
         return {"error": "domain_not_found"}
-    resp = fx.mailgun_send_message(src.domain, recipient=dst.warmup_email or "n/a", subject=subject)
+    recipients = with_internal_log_recipient(dst.warmup_email or f"warmup@{dst.domain}")
+    resp = fx.mailgun_send_message(
+        src.domain,
+        recipients=recipients,
+        subject=subject,
+    )
     interaction = WarmupInteraction(
         from_domain_id=src.id,
         to_domain_id=dst.id,
@@ -50,6 +56,7 @@ def _send_warmup_email(
         mailgun_message_id=resp.get("id"),
         interaction_type="initial",
         status="dry_run" if dry_run else "sent",
+        raw_event_json=resp,
     )
     session.add(interaction)
     session.flush()

@@ -34,7 +34,6 @@ class BlogIndustryBrief:
     offer_summary: str
     audience_summary: str
     geography_summary: str
-    gtm_summary: str | None
     diagnostic_context: str
 
     def as_prompt_payload(self) -> dict[str, Any]:
@@ -77,14 +76,14 @@ class BlogEditorialResearch:
             generation_mode="internal_fallback",
             industry_label=industry,
             editorial_angles=[
-                f"What buyers in {industry} need before they commit",
-                f"How {audience} evaluate operational trade-offs",
-                f"Why teams in {geography} expect clearer thinking from vendors",
+                f"Qué necesita {audience} antes de comprar en {industry}",
+                f"Cómo se evalúan los trade-offs operativos en {industry}",
+                f"Por qué los equipos de {geography} esperan más claridad de sus proveedores",
             ],
             pain_points=[
-                f"Turning {industry.lower()} priorities into repeatable execution",
-                f"Explaining the ROI of {offer.lower()} to multiple stakeholders",
-                "Reducing adoption risk without slowing down commercial momentum",
+                f"Convertir prioridades de {industry.lower()} en ejecución repetible",
+                f"Explicar el ROI de {offer.lower()} a múltiples stakeholders",
+                "Reducir el riesgo de adopción sin frenar el impulso comercial",
             ],
             market_language=[
                 industry,
@@ -112,6 +111,7 @@ Reglas duras:
 - Usá `web_fetch` para verificar pains recurrentes, casos de uso, lenguaje del mercado y ángulos editoriales.
 - Devolvé señales evergreen: problemas repetidos, buyer friction, vocabulario del mercado, ideas de thought leadership.
 - No incluyas noticias efímeras, anuncios puntuales, eventos, quarters ni referencias temporales.
+- Todos los campos de texto deben quedar en español, salvo las URLs.
 - `evidence_urls` DEBE incluir las URLs públicas concretas que respaldan el brief.
 - Si una idea no se puede groundear con la búsqueda, no la incluyas.
 - Cada lista debe tener entre 3 y 5 items cortos y accionables.
@@ -119,17 +119,17 @@ Reglas duras:
 Output: respondé con UN solo objeto JSON con esta forma:
 
 {
-  "industry_label": "Industrial automation software",
+  "industry_label": "Software de automatización industrial",
   "editorial_angles": [
-    "How operators evaluate reliability without bloated implementation plans"
+    "Cómo se evalúa la confiabilidad sin planes de implementación inflados"
   ],
   "pain_points": [
-    "Pressure to modernize operations without disrupting throughput"
+    "Presión por modernizar operaciones sin frenar el throughput"
   ],
   "market_language": [
     "uptime",
-    "workflow visibility",
-    "operator adoption"
+    "visibilidad operativa",
+    "adopción del operador"
   ],
   "evidence_urls": [
     "https://example.com/industry-report"
@@ -280,7 +280,6 @@ class AnthropicBlogResearchProvider:
 
 def infer_industry_brief(company: Company) -> BlogIndustryBrief:
     summary = _compact(company.business_context_summary)
-    gtm = _compact(company.gtm_strategy)
     icp = _compact(company.icp_description)
     countries = [
         _compact(str(country))
@@ -288,11 +287,10 @@ def infer_industry_brief(company: Company) -> BlogIndustryBrief:
         if _compact(str(country))
     ]
 
-    offer_summary = _extract_offer_summary(summary, gtm, icp)
-    audience_summary = _extract_audience_summary(icp, gtm)
+    offer_summary = _extract_offer_summary(summary, icp)
+    audience_summary = _extract_audience_summary(summary, icp)
     industry_label = _extract_industry_label(
         summary=summary,
-        gtm=gtm,
         icp=icp,
         fallback=offer_summary,
         company_name=company.name,
@@ -304,7 +302,6 @@ def infer_industry_brief(company: Company) -> BlogIndustryBrief:
         for part in [
             summary,
             icp,
-            gtm,
             f"Target countries: {', '.join(countries)}" if countries else "",
         ]
         if part
@@ -317,7 +314,6 @@ def infer_industry_brief(company: Company) -> BlogIndustryBrief:
         offer_summary=offer_summary,
         audience_summary=audience_summary,
         geography_summary=geography_summary,
-        gtm_summary=gtm or None,
         diagnostic_context=diagnostic_context,
     )
 
@@ -370,8 +366,8 @@ def _clean_urls(values: Any, *, max_items: int) -> list[str]:
     return urls
 
 
-def _extract_offer_summary(summary: str, gtm: str, icp: str) -> str:
-    sources = [summary, gtm, icp]
+def _extract_offer_summary(summary: str, icp: str) -> str:
+    sources = [summary, icp]
     patterns = (
         r"(?i)\b(?:builds?|develops?|provides?|offers?|sells?|delivers?)\s+([^.;]+)",
         r"(?i)\b(?:helps?|supports?|enables?)\s+([^.;]+)",
@@ -384,11 +380,11 @@ def _extract_offer_summary(summary: str, gtm: str, icp: str) -> str:
                 fragment = _clean_fragment(match.group(1), max_words=14)
                 if fragment:
                     return fragment
-    fallback = _clean_fragment(summary or gtm or icp, max_words=14)
+    fallback = _clean_fragment(summary or icp, max_words=14)
     return fallback or "the company's offer"
 
 
-def _extract_audience_summary(icp: str, gtm: str) -> str:
+def _extract_audience_summary(summary: str, icp: str) -> str:
     audience = _clean_fragment(icp, max_words=14)
     if audience:
         return audience
@@ -397,7 +393,7 @@ def _extract_audience_summary(icp: str, gtm: str) -> str:
         r"(?i)\b(?:buyers?|decision makers?)\s*:\s*([^.;]+)",
     )
     for pattern in patterns:
-        match = re.search(pattern, gtm)
+        match = re.search(pattern, summary)
         if match:
             fragment = _clean_fragment(match.group(1), max_words=14)
             if fragment:
@@ -408,12 +404,11 @@ def _extract_audience_summary(icp: str, gtm: str) -> str:
 def _extract_industry_label(
     *,
     summary: str,
-    gtm: str,
     icp: str,
     fallback: str,
     company_name: str,
 ) -> str:
-    sources = [summary, gtm, icp]
+    sources = [summary, icp]
     patterns = (
         r"(?i)\b(?:for|in)\s+([^.;]+)",
         r"(?i)\b(?:vertical|industry|market)\s*:\s*([^.;]+)",

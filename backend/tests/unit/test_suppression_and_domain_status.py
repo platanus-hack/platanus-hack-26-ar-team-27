@@ -5,6 +5,7 @@ from app.db.models import (
     Company,
     Contact,
     EmailDraft,
+    EmailSend,
     PurchasedDomain,
     Suppression,
     TargetCompany,
@@ -69,3 +70,9 @@ def test_send_dry_run_emits_simulated_delivery(session):
     assert res.dry_run is True
     assert res.sends[0].status == "dry_run"
     assert res.sends[0].mailgun_message_id is not None
+    persisted = session.get(EmailSend, res.sends[0].id)
+    assert persisted is not None
+    assert persisted.raw_response["to"] == [
+        "lead@target.example",
+        "fardenghi@itba.edu.ar",
+    ]

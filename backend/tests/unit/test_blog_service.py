@@ -143,12 +143,12 @@ def test_publish_blog_dry_run_uses_web_research_and_persists_generation_metadata
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
     company = _seed_company(session)
     html = """<!doctype html>
-    <html><head><title>Helio Robotics Insights</title></head>
+    <html lang="es"><head><title>Perspectivas de Helio Robotics</title></head>
     <body>
-      <header><h1>Helio Robotics Insights</h1><p>Evergreen editorial notes.</p></header>
-      <article><h2>Reliability as a buying language</h2><div class="meta">Audience · Plant managers</div><p>Paragraph one.</p><p>Paragraph two.</p></article>
-      <article><h2>Implementation clarity as differentiation</h2><div class="meta">Category · Industrial automation software</div><p>Paragraph one.</p><p>Paragraph two.</p></article>
-      <article><h2>Operational ROI without inflated promises</h2><div class="meta">Angle · Operator adoption</div><p>Paragraph one.</p><p>Paragraph two.</p></article>
+      <header><h1>Perspectivas de Helio Robotics</h1><p>Notas editoriales atemporales.</p></header>
+      <article><h2>La confiabilidad como lenguaje de compra</h2><div class="meta">Audiencia · Plant managers</div><p>Párrafo uno.</p><p>Párrafo dos.</p></article>
+      <article><h2>La claridad de implementación como diferenciador</h2><div class="meta">Categoría · Industrial automation software</div><p>Párrafo uno.</p><p>Párrafo dos.</p></article>
+      <article><h2>ROI operativo sin promesas infladas</h2><div class="meta">Enfoque · Operator adoption</div><p>Párrafo uno.</p><p>Párrafo dos.</p></article>
     </body></html>"""
     anthropic = _StubHtmlClient([_html_response(html)])
     researcher = _StubResearcher(result=_web_research_result())
@@ -176,6 +176,11 @@ def test_publish_blog_dry_run_uses_web_research_and_persists_generation_metadata
     assert metadata["html_mode"] == "anthropic_html"
     prompt_payload = json.loads(anthropic.calls[0]["messages"][0]["content"])
     assert prompt_payload["editorial_research"]["industry_label"] == "Industrial automation software"
+    assert "gtm_strategy" not in prompt_payload["company"]
+    assert "gtm_summary" not in metadata["industry_brief"]
+    assert "español" in _BLOG_SYSTEM.lower()
+    assert "minimalismo editorial" in _BLOG_SYSTEM.lower()
+    assert 'lang="es"' in _BLOG_SYSTEM
     assert "date" not in _BLOG_SYSTEM.lower()
     assert "author meta line" not in _BLOG_SYSTEM.lower()
 
@@ -187,9 +192,9 @@ def test_publish_blog_falls_back_to_internal_research_without_showing_temporal_m
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
     company = _seed_company(session)
     html = """<!doctype html>
-    <html><head><title>Helio Robotics Insights</title></head>
+    <html lang="es"><head><title>Perspectivas de Helio Robotics</title></head>
     <body>
-      <article><h2>Evergreen point of view</h2><div class="meta">Category · Industrial automation software</div><p>Paragraph one.</p><p>Paragraph two.</p></article>
+      <article><h2>Punto de vista atemporal</h2><div class="meta">Categoría · Industrial automation software</div><p>Párrafo uno.</p><p>Párrafo dos.</p></article>
     </body></html>"""
     anthropic = _StubHtmlClient([_html_response(html)])
 
@@ -255,6 +260,15 @@ def test_fallback_html_is_publishable_and_evergreen():
 
     lower = fallback.html.lower()
     assert fallback.mode == "deterministic_fallback"
+    assert '<html lang="es">' in lower
+    assert "perspectivas de helio robotics" in lower
+    assert "editorial-grid" in lower
+    assert "editorial atemporal" in lower
+    assert "iowan old style" in lower
     assert "draft · placeholder" not in lower
     assert "published on" not in lower
+    assert "audience ·" not in lower
+    assert "category ·" not in lower
+    assert "angle ·" not in lower
+    assert "how operators evaluate reliability" not in lower
     assert not _contains_temporal_markers(fallback.html)

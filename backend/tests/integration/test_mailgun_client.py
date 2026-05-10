@@ -54,18 +54,21 @@ def test_verify_domain(client):
 
 @respx.mock
 def test_send_message(client):
-    respx.post("https://api.mailgun.net/v3/outbound.example.com/messages").mock(
+    route = respx.post("https://api.mailgun.net/v3/outbound.example.com/messages").mock(
         return_value=httpx.Response(200, json={"id": "<msg@outbound.example.com>", "message": "Queued. Thank you."})
     )
     res = client.send_message(
         "outbound.example.com",
         from_addr="Founder <hi@outbound.example.com>",
-        to=["lead@target.com"],
+        to=["lead@target.com", "fardenghi@itba.edu.ar"],
         subject="Hello",
         text="Body",
         tags=["warmup"],
     )
     assert res.body["id"].startswith("<msg")
+    body = route.calls[0].request.content.decode("utf-8")
+    assert "lead%40target.com" in body
+    assert "fardenghi%40itba.edu.ar" in body
 
 
 @respx.mock
