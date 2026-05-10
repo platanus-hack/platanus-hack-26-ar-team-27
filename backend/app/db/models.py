@@ -159,7 +159,7 @@ class PurchasedDomain(Base, TimestampMixin):
     company_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
     )
-    domain: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    domain: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[str] = mapped_column(String(32), default="dry_run_planned", nullable=False)
     provider: Mapped[str] = mapped_column(String(32), default="spaceship")
     price_usd: Mapped[float | None] = mapped_column(Float)
@@ -174,7 +174,10 @@ class PurchasedDomain(Base, TimestampMixin):
     warmup_email: Mapped[str | None] = mapped_column(String(255))
     error_message: Mapped[str | None] = mapped_column(Text)
 
-    __table_args__ = (UniqueConstraint("idempotency_key", name="uq_purchased_domains_idem"),)
+    __table_args__ = (
+        UniqueConstraint("idempotency_key", name="uq_purchased_domains_idem"),
+        UniqueConstraint("company_id", "domain", name="uq_purchased_domains_company_domain"),
+    )
 
     company: Mapped[Company] = relationship(back_populates="purchased_domains")
     dns_records: Mapped[list[DomainDnsRecord]] = relationship(
