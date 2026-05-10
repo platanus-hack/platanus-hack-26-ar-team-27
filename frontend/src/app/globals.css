@@ -627,6 +627,31 @@ input, textarea, select { font-family: inherit; }
 .section-head { display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap; }
 .section-head h3 { font-family:var(--serif); font-size:22px; font-weight:400; letter-spacing:-0.014em; margin:6px 0 0; }
 .section-head .meta { font-family:var(--mono); font-size:11px; color:var(--fg-2); }
+.gtm-strategy-card {
+  border:1px solid var(--diagnostic-line);
+  background:linear-gradient(180deg,var(--diagnostic-soft),transparent 85%),var(--bg-2);
+  border-radius:var(--r-xl);
+  padding:22px 24px;
+  position:relative;
+  overflow:hidden;
+}
+.gtm-strategy-card::before {
+  content:"";
+  position:absolute;
+  top:0;
+  left:0;
+  right:0;
+  height:3px;
+  background:linear-gradient(90deg,var(--diagnostic),var(--domain));
+}
+.gtm-strategy-card p {
+  margin:0;
+  padding-top:6px;
+  max-width:900px;
+  font-size:14px;
+  line-height:1.7;
+  color:var(--fg-1);
+}
 .domains-summary { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
 @media (max-width:900px) { .domains-summary { grid-template-columns:1fr; } }
 .domain-card { border:1px solid var(--line); background:var(--bg-2); border-radius:var(--r-lg); padding:16px 18px; display:flex; flex-direction:column; gap:8px; }
