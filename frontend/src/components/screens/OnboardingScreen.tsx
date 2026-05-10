@@ -107,7 +107,7 @@ export default function OnboardingScreen({
               />
             </div>
             <div className="row">
-              <span className="k">Target inicial</span>
+              <span className="k">Clientes target inicial</span>
               <input
                 type="number"
                 style={{ fontFamily: "var(--sans)", fontSize: 13, border: "1px solid var(--line)", borderRadius: 7, padding: "4px 8px", background: "var(--bg-1)", color: "var(--fg)", width: 80, textAlign: "right" }}
@@ -203,7 +203,7 @@ export default function OnboardingScreen({
               <span className="ico"><IconDomain /></span>
               Plan de los agentes
             </div>
-            <span className="kicker">cap $4/dominio · warmup automático</span>
+            {/* <span className="kicker">cap $4/dominio · warmup automático</span> */}
           </header>
           <div className="body">
             {[

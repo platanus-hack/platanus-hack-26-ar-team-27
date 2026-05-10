@@ -148,8 +148,8 @@ export default function LandingScreen({
               {["var(--diagnostic)", "var(--domain)", "var(--dns)", "var(--warmup)", "var(--research)"].map((c, i) => (
                 <span key={i} style={{
                   width: 8, height: 8, borderRadius: "50%", background: c,
-                  animation: `fade-in 0.5s ${i * 0.12}s both`,
-                  opacity: 0.7,
+                  animation: `jump 0.6s ease-in-out infinite ${i * 0.12}s`,
+                  opacity: 0.8,
                 }} />
               ))}
             </div>
